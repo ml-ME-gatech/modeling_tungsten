@@ -1,0 +1,1 @@
+hardness is mean of 10 samples

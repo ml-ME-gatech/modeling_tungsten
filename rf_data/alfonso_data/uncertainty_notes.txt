@@ -1,0 +1,2 @@
+recrystallized fraction estimated from hardness data using rule of mixtures
+error bars are the std. dev. over 20 samples (indentations in sample)
