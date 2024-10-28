@@ -1,0 +1,18 @@
+T [C],Process,Direction,Surface,UTS [Mpa]
+25,Rolled,L,unpolished,503
+25,Rolled,L,polished,673
+25,Rolled,T,polished,458
+25,Forged,NaN,unpolished,519
+25,Forged,NaN,polished,500
+280,Rolled,L,unpolished,588
+280,Rolled,L,polished,593
+280,Rolled,T,unpolished,633
+280,Rolled,T,polished,522
+280,Forged,NaN,unpolished,507
+280,Forged,NaN,polished,540
+480,Rolled,L,unpolished,447
+480,Rolled,L,polished,450
+480,Rolled,T,unpolished,474
+480,Rolled,T,polished,481
+480,Forged,NaN,unpolished,550
+480,Forged,NaN,polished,525
