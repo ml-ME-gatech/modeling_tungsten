@@ -17,10 +17,11 @@ class NogamiData:
     convenience class to access Nogami data, and return it as numpy arrays
     """
 
-    def __init__(self, key: str):
+    def __init__(self, key: str,
+                       data_file: str):
 
         self.key = key
-        self.data = pd.read_csv('structural_data/nogami_data.csv',index_col = 0)
+        self.data = pd.read_csv(data_file,index_col = 0)
     
     def __getitem__(self,key: str) -> Tuple[np.ndarray,np.ndarray]:
 
@@ -34,44 +35,71 @@ class NogamiData:
 class NogamiUTSData(NogamiData):
 
     def __init__(self):
-        super().__init__('UTS')
+        super().__init__('UTS','structural_data/nogami_data.csv')
 
 class NogamiUEData(NogamiData):
 
     def __init__(self):
-        super().__init__('UE')
+        super().__init__('UE','structural_data/nogami_data.csv')
+
+class NogamiConductivityData(NogamiData):
+
+    def __init__(self):
+        super().__init__('','conductivity_data/nogami_data.csv')
+
 
 class TransformedFeature:
     """ 
-    class for representing a feature transform
+    class for representing a feature transform, optionally with its derivative
+    we could easily do this using some sort of autodiff, but this is relatively simply
     """
 
-    def __init__(self,name: str, model: Callable):
+    def __init__(self,name: str, 
+                      model: Callable,
+                      derivative: Callable = None):
 
         self.name = name
         self.model = model
+        self.derivative = derivative
     
     def __hash__(self) -> int:
         return hash(self.name)
     
     def __call__(self,x: np.ndarray) -> np.ndarray:
 
-        return self.model(x) 
+        return self.model(x)
+    
+    def deriv(self,x: np.ndarray) -> np.ndarray:
+        if self.derivative is not None:
+            return self.derivative(x)
+        else:
+            raise AttributeError('No derivative defined for this feature')  
 
 class SklearnTransform:
 
-    def __init__(self,transforms: List[Callable]):
+    def __init__(self,transforms: List[Callable],
+                       scale = True):   
+        
         self.transforms = transforms    
-    
+        self.scale = scale
+        self.xscale = None
+
     def fit(self,x: np.ndarray, y = None):
-        self.xscale = MinMaxScaler((1,2))
-        self.xscale.fit(x)
+        if self.scale:
+            self.xscale = MinMaxScaler((1,2))
+            self.xscale.fit(x)
     
     def transform(self,x: np.ndarray, y = None) -> np.ndarray:
-        return self.feature_transform(self.xscale.transform(x))
+        return self.feature_transform(self.xscale.transform(x)) if self.xscale else self.feature_transform(x)
 
     def feature_transform(self,x: np.ndarray, y = None):
         return np.concatenate([tform(x) for tform in self.transforms],axis = 1)
+    
+    def deriv(self,x: np.ndarray) -> np.ndarray:    
+        try:
+            return np.concatenate([tform.deriv(x) for tform in self.transforms],axis = 1)
+        except AttributeError as ae:
+            raise AttributeError(f'Must define derivaties for all features in a transform if derivative is called. No derivative defined for this feature: {str(ae)}')
     
     def fit_transform(self,x: np.ndarray,y = None) -> np.ndarray:
         self.fit(x)
@@ -95,10 +123,13 @@ class OneDimensionalBasisExpansion:
     def __str__(self) -> str:
         return str([feature.name for feature in self.features])
     
-    def make_sklearn_transorm(self) -> SklearnTransform:
-        return SklearnTransform([feature.model for feature in self.features])
+    def make_sklearn_transform(self,scale = True) -> SklearnTransform:
+        return SklearnTransform([feature for feature in self.features],scale = scale)
 
-def feature_selection(x: np.ndarray,y: np.ndarray,features: List[TransformedFeature]):
+def feature_selection(x: np.ndarray,
+                      y: np.ndarray,
+                      features: List[TransformedFeature],
+                      scale = True):
     """ 
     perform feature selection using Lasso/LARS regression
     and both AIC and cross validation critiera. 
@@ -117,7 +148,7 @@ def feature_selection(x: np.ndarray,y: np.ndarray,features: List[TransformedFeat
     features = features[:min(len(features),x.shape[0] - 2)]
 
     tform = OneDimensionalBasisExpansion(features)
-    x_ = MinMaxScaler((1,2)).fit_transform(x) # add 1 to avoid log(0)
+    x_ = MinMaxScaler((1,2)).fit_transform(x) if scale else x.copy() # add 1 to avoid log(0)
 
     X = tform.transform(x_)
     for model_fs in lasso:
@@ -147,7 +178,8 @@ def setup_axis_default(ax: plt.Axes):
 
 def get_k_most_commmon_feature_transform(data:List[Tuple[np.ndarray,np.ndarray]],
                                          k:int,
-                                         input_features = None) -> List[str]:
+                                         input_features = None,
+                                         scale = True) -> List[str]:
 
     """
     get the K most common features across data sets, using the selected features 
@@ -163,11 +195,13 @@ def get_k_most_commmon_feature_transform(data:List[Tuple[np.ndarray,np.ndarray]]
                 TransformedFeature('1/x',lambda x: 1/x),
                 TransformedFeature('x log x',lambda x: x*np.log(x)),
                 TransformedFeature('x^2',lambda x: x**2),
-                TransformedFeature('x^2 log x',lambda x: x**2*np.log(x))]
+                TransformedFeature('x^2 log x',lambda x: x**2*np.log(x))] if input_features is None else input_features
     
     data_len = 0
     for (x,y) in data:
-        features,msg = feature_selection(x,y, features= [f for f in input_features])
+        features,msg = feature_selection(x,y, 
+                                         features= [f for f in input_features],
+                                         scale = scale)
         
         data_len += x.shape[0] 
         
@@ -189,5 +223,7 @@ def get_k_most_commmon_feature_transform(data:List[Tuple[np.ndarray,np.ndarray]]
             break
         features.append(table[key])
     
-    transform = OneDimensionalBasisExpansion([TransformedFeature('1',lambda x: np.ones_like(x))] + features)
+    transform = OneDimensionalBasisExpansion(
+        [TransformedFeature('1',lambda x: np.ones_like(x),derivative= lambda x: np.zeros_like(x))] + features)
+
     return transform
