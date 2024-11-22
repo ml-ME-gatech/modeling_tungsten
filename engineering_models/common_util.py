@@ -8,6 +8,15 @@ from matplotlib.ticker import AutoMinorLocator
 from functools import partial
 from sklearn.pipeline import Pipeline
 from numpy.polynomial import Polynomial
+import copy
+from matplotlib.patches import Circle, RegularPolygon
+from matplotlib.path import Path
+from matplotlib.projections.polar import PolarAxes
+from matplotlib.projections import register_projection
+from matplotlib.spines import Spine
+from matplotlib.transforms import Affine2D
+from scipy.integrate import quad
+from scipy.optimize import minimize_scalar
 
 """
 Common utilities used among the jupyter notebooks in this folder
@@ -49,6 +58,33 @@ class NogamiConductivityData(NogamiData):
     def __init__(self):
         super().__init__('','conductivity_data/nogami_data.csv')
 
+class NogamiDataCollection:
+    material_to_cond = {'K-W Plate (H)': 'K-doped W (H) Plate',
+                        'K-W3%Re Plate (H)': 'K-doped W-3%Re (H) Plate',
+                        'K-W3%Re Plate (L)': 'K-doped W-3%Re (H) Plate',
+                        'W3%Re Plate (H)': 'W-3%Re (H) Plate',
+                        'W3%Re Plate (L)': 'W-3%Re (H) Plate',
+                        'W Plate (H)': 'Pure W (H) Plate'}
+    
+    def __init__(self):
+        self.uts = NogamiUTSData()
+        self.ue = NogamiUEData()
+        self.conductivity = NogamiConductivityData()
+
+    def uts_key(self,key: str) -> str:
+        return 'UTS [MPa] ' + key
+    
+    def ue_key(self,key: str) -> str:
+        return 'UE [%] ' + key
+    
+    def conductivity_key(self,key: str) -> str:
+        return self.material_to_cond[key]
+    
+    def __getitem__(self,key: str) -> Tuple[Tuple[np.ndarray]]:
+        return self.uts[self.uts_key(key)],self.ue[self.ue_key(key)],self.conductivity[self.conductivity_key(key)]
+    
+    def keys(self):
+        return [key[10:].strip() for key in self.uts.keys()]
 
 class TransformedFeature:
     """ 
@@ -174,12 +210,12 @@ def feature_selection(x: np.ndarray,
     selected = tform.get_selected_features(model.coef_ != 0)
     return selected,msg
         
-def setup_axis_default(ax: plt.Axes):
+def setup_axis_default(ax: plt.Axes,labelsize: float = 11.):
     
     """
     convinience function to set up the axis
     """
-    ax.tick_params('both',labelsize = 11,which = 'both',direction = 'in')
+    ax.tick_params('both',labelsize = labelsize,which = 'both',direction = 'in')
     ax.xaxis.set_minor_locator(AutoMinorLocator(5))
     ax.yaxis.set_minor_locator(AutoMinorLocator(5))
     return ax
@@ -354,39 +390,160 @@ def hdi(samples_: np.ndarray,alpha: int) -> np.ndarray:
 
     return np.stack([hdi_min,hdi_max],axis = -1)
 
-def get_p_from_generic_model(model: LinearRegression | Pipeline | Callable) -> int:
+
+def make_radar_plot(num_vars, frame='circle'):
+    """Create a radar chart with `num_vars` axes. Hacked from stackoverflow
+
+    This function creates a RadarAxes projection and registers it.
+
+    Parameters
+    ----------
+    num_vars : int
+        Number of variables for radar chart.
+    frame : {'circle' | 'polygon'}
+        Shape of frame surrounding axes.
+
     """
-    try and get the number of parameters from a generic model
+    # calculate evenly-spaced axis angles
+    theta = np.linspace(0, 2*np.pi, num_vars, endpoint=False)
+    
+    class RadarTransform(PolarAxes.PolarTransform):
+        def transform_path_non_affine(self, path):
+            # Paths with non-unit interpolation steps correspond to gridlines,
+            # in which case we force interpolation (to defeat PolarTransform's
+            # autoconversion to circular arcs).
+            if path._interpolation_steps > 1:
+                path = path.interpolated(num_vars)
+            return Path(self.transform(path.vertices), path.codes)
+
+    class RadarAxes(PolarAxes):
+
+        name = 'radar'
+        PolarTransform = RadarTransform
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            # rotate plot such that the first axis is at the top
+            self.set_theta_zero_location('N')
+
+        def fill(self, *args, closed=True, **kwargs):
+            """Override fill so that line is closed by default"""
+            return super().fill(closed=closed, *args, **kwargs)
+
+        def plot(self, *args, **kwargs):
+            """Override plot so that line is closed by default"""
+            lines = super().plot(*args, **kwargs)
+            for line in lines:
+                self._close_line(line)
+
+        def _close_line(self, line):
+            x, y = line.get_data()
+            # FIXME: markers at x[0], y[0] get doubled-up
+            if x[0] != x[-1]:
+                x = np.concatenate((x, [x[0]]))
+                y = np.concatenate((y, [y[0]]))
+                line.set_data(x, y)
+
+        def set_varlabels(self, labels, **kwargs):
+            self.set_thetagrids(np.degrees(theta), labels,**kwargs)
+
+        def _gen_axes_patch(self):
+            # The Axes patch must be centered at (0.5, 0.5) and of radius 0.5
+            # in axes coordinates.
+            if frame == 'circle':
+                return Circle((0.5, 0.5), 0.5)
+            elif frame == 'polygon':
+                return RegularPolygon((0.5, 0.5), num_vars, radius=0.5, edgecolor="k")
+            else:
+                raise ValueError("unknown value for 'frame': %s" % frame)
+
+        def draw(self, renderer):
+            """ Draw. If frame is polygon, make gridlines polygon-shaped """
+            if frame == 'polygon':
+                gridlines = self.yaxis.get_gridlines()
+                for gl in gridlines:
+                    gl.get_path()._interpolation_steps = num_vars
+            super().draw(renderer)
+
+        def _gen_axes_spines(self):
+            if frame == 'circle':
+                return super()._gen_axes_spines()
+            elif frame == 'polygon':
+                # spine_type must be 'left'/'right'/'top'/'bottom'/'circle'.
+                spine = Spine(axes=self,
+                              spine_type='circle',
+                              path=Path.unit_regular_polygon(num_vars))
+                # unit_regular_polygon gives a polygon of radius 1 centered at
+                # (0, 0) but we want a polygon of radius 0.5 centered at (0.5,
+                # 0.5) in axes coordinates.
+                spine.set_transform(Affine2D().scale(.5).translate(.5, .5)
+                                    + self.transAxes)
+                return {'polar': spine}
+            else:
+                raise ValueError("unknown value for 'frame': %s" % frame)
+
+    register_projection(RadarAxes)
+    return theta
+
+class ParamterizedLinearModel:
+
     """
+    Need to pickle this for later, so just make it a class
+    """
+    def __init__(self,model: Pipeline,
+                       model_spread: Pipeline = None) -> None:
+        
+        self.x,self.y = None,None
+        self.model = copy.deepcopy(model)
+        self.model_spread = copy.deepcopy(model if model_spread is None else model_spread)
 
-    if isinstance(model,Pipeline):
-        try:
-            return model.named_steps['regression'].coef_.shape[0]
-        except KeyError:
-            try:
-                return model.named_steps['model'].coef_.shape[0]
-            except KeyError:
-                return len(model.named_steps['transform'])
-    elif isinstance(model,LinearRegression):
-        return model.coef_.shape[0] 
-    else:
-        raise ValueError('Model type not recognized')
+    def fit_spread(self, x: np.ndarray,y: np.ndarray, 
+                        *args,alpha = 0.95,**kwargs) -> None:
+        
+        ci = hdi(y,alpha = alpha).T
+        d = 0.5*(ci[1] - ci[0])
+        self.model_spread.fit(x,0.5*(ci[1] - ci[0]),*args,**kwargs)
+        d_max = d.max()
+        self.gamma_bracket = (-d_max*2,d_max*2)
 
+    def fit_mean(self, x: np.ndarray,y: np.ndarray,*args,**kwargs) -> None:
+        self.model.fit(x,y,*args,**kwargs)
 
-class OneDPiecewiseFunction:
-
-    def __init__(self,models: List[Any],
-                              intervals: List[Tuple[int]]) -> None:
-        self.models = models
-        self.intervals = intervals
-
-    def predict(self,x: np.ndarray) -> np.ndarray:
-        y = np.zeros_like(x)
-        for i,model in enumerate(self.models):
-            mask = np.all([x >= self.intervals[i][0],x <= self.intervals[i][1]],axis = 0)
-            y[mask,...] = model.predict(x[mask,...])
-        return y
+    def __call__(self,xnew: np.ndarray,gamma: float) -> np.ndarray:
+        return self.model.predict(xnew).squeeze() + gamma*self.model_spread.predict(xnew).squeeze()
     
-    def __call__(self,x: np.ndarray) -> np.ndarray:
-        return self.predict(x)
+    def find_gamma(self,material_model: Callable,xlim: Tuple[float,float]) -> float:
+        return self._find_closest_model(material_model,self,xlim,self.gamma_bracket)
     
+    def mean_value(self,xlim: Tuple[float],gamma: float) -> float:
+        def integrate(x: float):
+            _x = np.array([x])[:,np.newaxis]
+            return self(_x,gamma)
+
+        return 1/(xlim[1] - xlim[0])*quad(integrate,*xlim)[0]
+
+    
+    @staticmethod
+    def _find_closest_model(material_model: Callable,
+                            parametric_model: Callable,
+                            xlim: Tuple[float,float],
+                            gamma_lim: Tuple[float,float]):
+        
+        """
+        Could have done using analytical integrals, but this is easier to implemnt. 
+        """
+        
+        def model_diff(gamma: float):
+            
+            def wrapped(x: float):
+                _x = np.array([x])[:,np.newaxis]
+                y = material_model(_x).squeeze() - parametric_model(_x,gamma)
+                return y
+            
+            return np.abs(quad(wrapped,*xlim)[0])
+
+        res = minimize_scalar(model_diff,bounds = gamma_lim)
+        if res.success:
+            return res.x
+        else:
+            raise ValueError("Optimization failed")

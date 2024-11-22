@@ -4,6 +4,8 @@ This project repository contains python scripts and data neccessary to estimate 
 The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$. 
 Second, a statistical estimate in the reduction of material hardness based on material recrystillization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
 
+# Summary
+
 ## Recrystillization Description 
 
 ## Estimating Reduction in Material Hardness
