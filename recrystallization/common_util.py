@@ -206,6 +206,33 @@ class LogLinearArrheniusModelFunc:
         else:
             raise ValueError(f'Optimization failed: {msg}')
 
+def hdi(samples_: np.ndarray,alpha: int) -> np.ndarray:
+    """
+    Compute the highest density interval at level alpha
+    based upon samples from the distribution provided by "samples"
+    along the last axis of the array
 
+    Parameters
+    ----------
+    samples : np.ndarray
+        Samples from the distribution of interest
+    alpha : int
 
-        
+    Returns
+    -------
+    np.ndarray
+        The HDI at level alpha
+
+    """
+
+    samples = samples_.reshape([-1,samples_.shape[-1]])
+    samples = np.sort(samples,axis = -1)
+    n = samples.shape[-1] 
+    n_included = int(np.floor(alpha*n))
+    n_intervals = n - n_included
+    interval_width = samples[:,n_included:] - samples[:,:n_intervals]
+    min_idx = np.argmin(interval_width,axis = -1)
+    hdi_min = samples[np.arange(samples.shape[0],dtype = int),min_idx]
+    hdi_max = samples[np.arange(samples.shape[0],dtype = int),min_idx+n_included]   
+
+    return np.stack([hdi_min,hdi_max],axis = -1)
