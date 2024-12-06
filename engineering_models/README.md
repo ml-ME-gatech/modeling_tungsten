@@ -15,7 +15,7 @@ If you woud like to review the contents of this directory comprehensively, pleas
 1. [uts_data_exploration.ipynb](uts_data_expoloration.ipynb)
 2. [uts_modeling.ipynb](uts_modeling.ipynb)
 3. [ue_data_exploration.ipynb](ue_data_exploration.ipynb)
-4. [ue_modeling.ipynb](ue_data_exploration.ipynb)
+4. [ue_modeling.ipynb](ue_modeling.ipynb)
 5. [conductivity_data_exploration.ipynb](conductivity_data_exploration.ipynb)
 6. [conductivity_modeling.ipynb](conductivity_modeling.ipynb)
 7. [creep_modeling.ipynb](creep_modeling.ipynb) 
