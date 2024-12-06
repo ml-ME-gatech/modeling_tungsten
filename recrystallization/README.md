@@ -10,7 +10,7 @@ Second, a statistical estimate in the reduction of material hardness based on ma
 
 ## Estimating Reduction in Material Hardness
 Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding frational reduction in yield strength. 
-Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22\%}$.
+Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22} %$.
 ## Estimating Recrystillization Fraction State Function
 ### Estimation of Arrhenius Process Parameters via Linear Regression
 ### Least Squares Comparisons of State Function Models
