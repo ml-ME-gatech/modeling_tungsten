@@ -13,7 +13,7 @@ Recrystallization of the warm-rolled tungsten plate is a thermally activated _ph
 
 ## Estimating Reduction in Material Hardness
 Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding frational reduction in yield strength. 
-Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22\%}$.
+Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22}$ \%.
 ## Estimating Recrystillization Fraction State Function
 We assess the fitting and extrapolative capabilities of two models (1) The (modified) Johnson–Mehl–Avrami–Kolmogorov (JMAK) model and (2) a generalized logistic model to fit observed experimental data using least squares regression techinques in [initial_least_squares_comparison.ipynb]. The model forms are introduced, and their capabilities discussed in these notebooks. I found the capabilities to be fairly simimlar, however the generalized logistic model is bijective and continuous, which is convinient for future applications, so I favored
 
