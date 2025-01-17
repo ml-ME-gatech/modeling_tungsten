@@ -4,9 +4,187 @@ import numpy as np
 from scipy.stats import t as tdist
 from abc import abstractmethod,ABC
 from statsmodels.regression.linear_model import OLS, OLSResults
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Iterable
 from scipy.optimize import minimize_scalar, OptimizeResult
 from dataclasses import dataclass
+import pickle
+import pandas as pd
+import warnings
+from scipy.integrate import quad
+from scipy.special import gamma,digamma
+import math
+import optax
+import jax
+from tqdm import tqdm   
+from functools import partial
+from jax import lax
+
+_EULER_MASCHERONI = 0.57721566490153286060651209008240243104215933593992
+_FILE_TO_LABEL = {'rf_data/alfonso_data/highly_rolled.csv': 'Lopez et al. (2015) - HR',
+                'rf_data/alfonso_data/moderate_roll.csv': 'Lopez et al. (2015) - MR',
+                'rf_data/richou_data/batch_a_data.csv': 'Richou et al. (2020) - Batch A',
+                'rf_data/richou_data/batch_b_data.csv': 'Richou et al. (2020) - Batch B',
+                'rf_data/yu_data/data.csv': 'Yu et al. (2017)'}
+
+
+def resampled_adam(param_samples: Iterable,
+                   objective_fun: Callable,
+                   lr = 5e-4,
+                   opt_iter = 1000):
+    
+    """
+    from an array of initial parameter samples (ideally drawn from the posterior distribution)
+    perform adam optimization on the objective function. The function will return the best optimial 
+    parameters found
+    """
+    opt_params = []
+    fun_value = np.zeros(len(param_samples))
+    reduce = optax.contrib.reduce_on_plateau(factor = 0.5,
+                                                patience = 5,
+                                                cooldown= 0,
+                                                accumulation_size= 50,
+                                                min_scale = 1e-8,
+                                                rtol = 1e-4)
+    
+    last_samples = max(1,int(9*opt_iter/10))
+
+    def _update(optimizer, state,_):
+        """
+        update function for the optimizer
+        """
+        params,opt_state = state
+        value,grads = jax.value_and_grad(objective_fun)(params)
+        updates,new_opt_state = optimizer.update(grads,opt_state,params,value = value)    
+        new_params = optax.apply_updates(params,updates)
+        return (new_params,new_opt_state),(params,value)
+    
+    def _optimize(optimizer,params):
+        """
+        do the optimization using the lax.scan function to avoid explicit for loops
+        in python. Significantly speeds up the optimization process
+        """
+        opt_state = optimizer.init(params)
+        _, (params_hist,value_hist) = lax.scan(partial(_update, optimizer), (params, opt_state), length=opt_iter)
+        return params_hist,value_hist
+    
+    # main iterator over the parameter samples
+    iterator = tqdm(param_samples,desc = 'Optimizing')
+    
+    for i,psample in enumerate(iterator):   
+        solver = optax.chain(optax.adam(lr),reduce,)
+        param_hist,value_hist = _optimize(solver,psample)
+        i_ = np.argmin(value_hist[last_samples:]) + last_samples
+        fun_value[i] = value_hist[i_]
+        opt_params.append(param_hist[i_])
+
+    index= np.argmin(fun_value)
+    return opt_params[index],fun_value[index]
+
+def kbar_jmak(a1: float,B1: float,n: float,T1: float,T2: float):
+
+    def _integrate_func(x: np.ndarray):
+        return np.exp(-B1/x)
+    
+    return quad(_integrate_func, T1, T2)[0] * gamma(1 + 1/n)/(math.exp(a1)*(T2 - T1))
+
+def kbar_gl(a1: float,B1: float,nu: float,T1: float,T2: float):
+
+    def _integrate_func(x: np.ndarray):
+        return np.exp(-B1/x)
+    
+    return quad(_integrate_func, T1, T2)[0]*(digamma(1/nu) + _EULER_MASCHERONI)/(math.exp(a1)*(T2 - T1))
+
+def tbar(a2: float,B2: float,T1: float,T2: float):
+
+    def _integrate_func(x: np.ndarray):
+        return np.exp(B2/x)
+    
+    return quad(_integrate_func, T1, T2)[0]*math.exp(a2)/(T2 - T1)
+
+
+def get_loglinear_arrhenius_parameter_bounds_from_file(plabel: str,
+                                             file: str,
+                                             alpha = 1e-3,
+                                             file_to_label = _FILE_TO_LABEL) -> Tuple[np.ndarray,np.ndarray]:
+    
+    """
+    read log-linear arrhenius model from file (approx. estimated in seperate notebook),
+    and provide nonlinear optimization bounds for the parameters
+    """
+    
+    label = file_to_label[file]
+    with open(f'.model/{plabel}_{label}_first_{2}.pkl','rb') as f:
+        ols_res_f = pickle.load(f).parameter_confidence_interval(alpha)
+    
+    with open(f'.model/{plabel}_{label}_last_{2}.pkl','rb') as f:
+        ols_res_l = pickle.load(f).parameter_confidence_interval(alpha)
+    
+    ci = np.concatenate([ols_res_f,
+                         ols_res_l],axis = 1)
+    
+    bounds = np.array([np.min(ci,axis = 1),np.max(ci,axis = 1)]).T
+    return bounds,bounds.mean(axis = 1)
+    
+def read_prepare_data(file: str,
+                      mult = 1.,
+                      exclude_index = []) -> pd.DataFrame:
+    
+    """
+    helper function to read data from file and make sure that the values
+    are within the bounds of the model. Also make sure that standard 
+    deviations are above some minimum value that I couldn't estimate
+    from the plots.
+    """
+    df = pd.read_csv(file,index_col = 0)
+    index = np.ones(df.shape[0],dtype = bool)   
+    index[exclude_index] = False
+    df = df.loc[index,:]
+    
+    df['time']*=mult
+    t = df['time'].to_numpy()
+    T = df['temperature'].to_numpy() + 273.15
+    X = df['X'].to_numpy()
+    X[X <= 0 ] = 0.0
+    X[X >= 1] = 1
+    with warnings.catch_warnings(action = 'ignore'):
+        try:
+            df.loc[df['std'] == 0,'std'] = max(df.loc[df['std'] > 0,'std'].min(),1e-3)
+        except KeyError as ke:
+            df['std'] = 1e-3
+            print(f'No standard deviation column found, using {1e-3} for all values')
+
+    return t,T,X,df
+
+def jmak_fit_model_setup(file: str,
+                         bounds_n: np.ndarray = np.array([[1.0,3.0]]),
+                         mult = 1.,
+                         exclude_index = [],
+                         **kwargs):
+    
+    """
+    neccssary setup for fitting the JMAK model
+    """
+    bounds_tinc,p0_tinc = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file,**kwargs)
+    bounds_b,p0_b = get_loglinear_arrhenius_parameter_bounds_from_file('log_b',file, **kwargs)
+    bounds = np.concatenate([bounds_n,bounds_b,bounds_tinc],axis = 0)
+    p0 = np.concatenate([p0_b,p0_tinc])
+    return *read_prepare_data(file, mult = mult,exclude_index = exclude_index),bounds,p0
+
+def gl_fit_model_setup(file: str,
+                       bounds_nu: np.ndarray = np.array([[1e-3,1.0]]),
+                       mult = 1.,
+                        exclude_index = [],
+                       **kwargs):
+
+    """
+    neccssary setup for fitting the GL model
+    """
+    bounds_B,p0_B = get_loglinear_arrhenius_parameter_bounds_from_file('log_B',file,**kwargs)
+    bounds_M,p0_M = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file, **kwargs)
+    bounds = np.concatenate([bounds_nu,bounds_B,bounds_M],axis = 0)
+    p0 = np.concatenate([p0_B,p0_M])
+    return *read_prepare_data(file,mult = mult,exclude_index = exclude_index),bounds,p0
+
 
 def setup_axis_default(ax: plt.Axes):
     
@@ -205,6 +383,15 @@ class LogLinearArrheniusModelFunc:
             return self
         else:
             raise ValueError(f'Optimization failed: {msg}')
+
+def get_arrhenius_process_params(ap: LogLinearArrhenius) -> np.ndarray:
+    return ap.params[0],ap.params[1]
+
+def get_model_ap_params(model: LogLinearArrheniusModelFunc) -> np.ndarray:
+    return (*get_arrhenius_process_params(model.ap1),*get_arrhenius_process_params(model.ap2))
+
+def get_model_params(model: LogLinearArrheniusModelFunc) -> np.ndarray:
+    return *get_model_ap_params(model),model.n
 
 def hdi(samples_: np.ndarray,alpha: int) -> np.ndarray:
     """
