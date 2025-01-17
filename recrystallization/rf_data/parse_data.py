@@ -90,11 +90,11 @@ class DataParser:
 
 
 def main():
-    folder = 'rf_data/yu_data'
+    folder = 'yu_data'
     parser = DataParser(folder)
     df = parser.parse()
     print(df.columns)
-    df.to_csv('rf_data/yu_data/hardness_data.csv')
+    df.to_csv('yu_data/hardness_data.csv')
 
 
 if __name__ == '__main__':

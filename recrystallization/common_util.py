@@ -3,8 +3,8 @@ from matplotlib.ticker import AutoMinorLocator
 import numpy as np
 from scipy.stats import t as tdist
 from abc import abstractmethod,ABC
-from statsmodels.regression.linear_model import OLS, OLSResults
-from typing import Tuple, Callable, Iterable
+from statsmodels.regression.linear_model import OLS
+from typing import Tuple, Callable, Iterable, Any
 from scipy.optimize import minimize_scalar, OptimizeResult
 from dataclasses import dataclass
 import pickle
@@ -18,13 +18,31 @@ import jax
 from tqdm import tqdm   
 from functools import partial
 from jax import lax
+from pathlib import WindowsPath,PosixPath
+import sys
 
-_EULER_MASCHERONI = 0.57721566490153286060651209008240243104215933593992
+#Path Stuff
+_PATH_PATH = WindowsPath if 'win' in sys.platform.lower() else PosixPath
+_CURR_DIR = _PATH_PATH(__file__).parent
+_MODEL_DIR = _CURR_DIR.joinpath('.model')
+
 _FILE_TO_LABEL = {'rf_data/alfonso_data/highly_rolled.csv': 'Lopez et al. (2015) - HR',
                 'rf_data/alfonso_data/moderate_roll.csv': 'Lopez et al. (2015) - MR',
                 'rf_data/richou_data/batch_a_data.csv': 'Richou et al. (2020) - Batch A',
                 'rf_data/richou_data/batch_b_data.csv': 'Richou et al. (2020) - Batch B',
                 'rf_data/yu_data/data.csv': 'Yu et al. (2017)'}
+
+_FILE_TO_MULTIPLIER = {'rf_data/alfonso_data/highly_rolled.csv': 3600.,
+                      'rf_data/alfonso_data/moderate_roll.csv': 3600.,
+                       'rf_data/richou_data/batch_a_data.csv': 1.0,
+                       'rf_data/richou_data/batch_b_data.csv': 1.0,
+                        'rf_data/yu_data/data.csv': 3600}
+
+_FILE_TO_LABEL = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_LABEL.items()}
+_FILE_TO_MULTIPLIER = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_MULTIPLIER.items()}
+
+#Connstant Used in Integration of Arrhenius Models
+_EULER_MASCHERONI = 0.57721566490153286060651209008240243104215933593992
 
 
 def resampled_adam(param_samples: Iterable,
@@ -77,34 +95,62 @@ def resampled_adam(param_samples: Iterable,
         fun_value[i] = value_hist[i_]
         opt_params.append(param_hist[i_])
 
+    index = np.isnan(fun_value)
+    fun_value[index] = np.inf
     index= np.argmin(fun_value)
     return opt_params[index],fun_value[index]
 
 def kbar_jmak(a1: float,B1: float,n: float,T1: float,T2: float):
-
+    """
+    Numerically compute the average inverse rate function contribution to the "average time to recrystillization"
+    for the JMAK model
+    """
     def _integrate_func(x: np.ndarray):
         return np.exp(-B1/x)
     
     return quad(_integrate_func, T1, T2)[0] * gamma(1 + 1/n)/(math.exp(a1)*(T2 - T1))
 
 def kbar_gl(a1: float,B1: float,nu: float,T1: float,T2: float):
-
+    """
+    Numerically compute the average inverse rate function contribution to the "average time to recrystillization"
+    for the Generalized Logistic model
+    """
     def _integrate_func(x: np.ndarray):
         return np.exp(-B1/x)
     
     return quad(_integrate_func, T1, T2)[0]*(digamma(1/nu) + _EULER_MASCHERONI)/(math.exp(a1)*(T2 - T1))
 
 def tbar(a2: float,B2: float,T1: float,T2: float):
-
+    """
+    Numerically compute the average incubation time/starting time 
+    """
     def _integrate_func(x: np.ndarray):
         return np.exp(B2/x)
     
     return quad(_integrate_func, T1, T2)[0]*math.exp(a2)/(T2 - T1)
 
+def _file_key(file: Any):
+
+    """
+    helper function to make sure whatever is provided to read functions actually resolves
+    to a data path that can be used to load data and lookup references
+    """
+    _file = _PATH_PATH(file).resolve()
+    if _file.exists():
+        return str(_file)
+    else:
+        raise FileNotFoundError(f'File {_file} does not exist')
+
+def get_data_label(file: Any):
+    return _FILE_TO_LABEL[_file_key(file)]
+
+def get_data_multiplier(file: Any):
+    return _FILE_TO_MULTIPLIER[_file_key(file)]
 
 def get_loglinear_arrhenius_parameter_bounds_from_file(plabel: str,
-                                             file: str,
+                                             file_: str,
                                              alpha = 1e-3,
+                                             method = 2,
                                              file_to_label = _FILE_TO_LABEL) -> Tuple[np.ndarray,np.ndarray]:
     
     """
@@ -112,11 +158,19 @@ def get_loglinear_arrhenius_parameter_bounds_from_file(plabel: str,
     and provide nonlinear optimization bounds for the parameters
     """
     
+    if file_ not in file_to_label:
+        try:
+            file = _file_key(file_)
+        except FileNotFoundError as fe:
+            raise KeyError(f'File {file_} is not in file_label_label and could not be resolved to a path.')
+    else:
+        file = file_    
+    
     label = file_to_label[file]
-    with open(f'.model/{plabel}_{label}_first_{2}.pkl','rb') as f:
+    with open(_MODEL_DIR.joinpath(f'{plabel}_{label}_first_{method}.pkl'),'rb') as f:
         ols_res_f = pickle.load(f).parameter_confidence_interval(alpha)
     
-    with open(f'.model/{plabel}_{label}_last_{2}.pkl','rb') as f:
+    with open(_MODEL_DIR.joinpath(f'{plabel}_{label}_last_{method}.pkl'),'rb') as f:
         ols_res_l = pickle.load(f).parameter_confidence_interval(alpha)
     
     ci = np.concatenate([ols_res_f,
@@ -217,6 +271,10 @@ def generalized_logistic(t: np.ndarray,B: float,M: float,nu: float):
 
 class ArrheniusProcess(ABC):
 
+    """
+    Abstract base class for Arrhenius processes. Basically a wrapper around
+    the statsmodels OLS class to fit the log-linear Arrhenius model
+    """
     _p = None
     def __init__(self,params: np.ndarray = None):
         self.params = params
@@ -252,6 +310,9 @@ class ArrheniusProcess(ABC):
     
 class LogLinearArrhenius(ArrheniusProcess):
     
+    """
+    standard log linear Arrhenius model
+    """
     _p = 2
 
     def tform(self, x: np.ndarray):
@@ -271,6 +332,10 @@ class LogLinearArrhenius(ArrheniusProcess):
     
 class FudgeFactorArrhenius(LogLinearArrhenius):
 
+    """
+    slightly modified log-linear Arrhenius model with a fudge factor
+    exponential term
+    """
     _p = 3
 
     def parameter_confidence_interval(self,alpha: float):
@@ -311,6 +376,10 @@ class FudgeFactorArrhenius(LogLinearArrhenius):
                  beta_init: float,
                  beta_bounds: Tuple[float] = (0.1,2.0)):
         
+        """
+        basically a fixed point iteration. If beta is known, 
+        then the model can be fit in one step using least squares.
+        """
         self.x = x.copy()
 
         self.params = np.zeros(3)
@@ -338,7 +407,10 @@ class FudgeFactorArrhenius(LogLinearArrhenius):
 
 @dataclass
 class LogLinearArrheniusModelFunc:
-    
+    """
+    module to plug in the "model function" (i.e. either the JMAK or GL model)
+    with accompying Arrhenius processes for the rate constant and incubation/start times
+    """
     rxFunc: Callable = None
     n: float = None
     ap1: ArrheniusProcess = LogLinearArrhenius()
@@ -385,12 +457,21 @@ class LogLinearArrheniusModelFunc:
             raise ValueError(f'Optimization failed: {msg}')
 
 def get_arrhenius_process_params(ap: LogLinearArrhenius) -> np.ndarray:
+    """
+    wrapper for grabbing the arrhenius process parameters
+    """
     return ap.params[0],ap.params[1]
 
 def get_model_ap_params(model: LogLinearArrheniusModelFunc) -> np.ndarray:
+    """
+    wrapper for grabbing both the arrhenius process parameters
+    """
     return (*get_arrhenius_process_params(model.ap1),*get_arrhenius_process_params(model.ap2))
 
 def get_model_params(model: LogLinearArrheniusModelFunc) -> np.ndarray:
+    """
+    wrapper for grabbing all parametres from the model function
+    """
     return *get_model_ap_params(model),model.n
 
 def hdi(samples_: np.ndarray,alpha: int) -> np.ndarray:
