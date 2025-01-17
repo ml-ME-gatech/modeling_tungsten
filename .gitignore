@@ -1,0 +1,7 @@
+*.pkl
+recrystallization/.temp_images
+recrystallization/.derivation
+recrystallization/.scratch
+recrystallization/further_summmary_of_recrystillization.docx
+recrystallization/temp_curves.ipynb
+recrystallization/temperature_thru_thick.surf.out
