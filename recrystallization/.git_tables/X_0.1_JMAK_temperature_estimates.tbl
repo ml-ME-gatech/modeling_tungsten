@@ -1,0 +1,8 @@
+**JMAK 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.1$ after $1$ year.
+|                                |   ML |   Lower 95\% |   Upper 95% |
+|:-------------------------------|-----:|-------------:|------------:|
+| Richou et al. (2020) - Batch A | 1066 |         1036 |        1100 |
+| Lopez et al. (2015) - MR       | 1085 |         1073 |        1085 |
+| Richou et al. (2020) - Batch B | 1021 |          932 |        1110 |
+| Lopez et al. (2015) - HR       |  931 |          920 |         949 |
+| Yu et al. (2017)               |  N/A |          N/A |         914 |
