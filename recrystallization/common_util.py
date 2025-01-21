@@ -504,3 +504,15 @@ def hdi(samples_: np.ndarray,alpha: int) -> np.ndarray:
     hdi_max = samples[np.arange(samples.shape[0],dtype = int),min_idx+n_included]   
 
     return np.stack([hdi_min,hdi_max],axis = -1)
+
+def markdown_table_from_df(df: pd.DataFrame,
+                            title: str,
+                            caption: str,
+                            replace_nan: str = 'N/A') -> str:
+    
+    title_caption = '**' + title + '**:' + caption + '\n'
+    table_str = df.to_markdown()
+    if replace_nan is not None:
+        table_str = table_str.replace('nan',replace_nan)
+
+    return title_caption + table_str + '\n'

@@ -1,15 +1,12 @@
 # Overview
 TO-DO: 
-1. _quantiative comparison_ between models/data set models
-2. Visual aid for recrystillization fraction
-3. Description/distinction of non-isothermal vs. isothermal recrystillization
-4. Sample applications 
-5. Edit with Chatgpt
-
+1. Type up continous model derivation
+2. Visual aid for recrystillization fraction - plot
+3. Edit with Chatgpt
+4. distributions of latent variable vizualizations, get image for github
 
 ## Summary
-This project repository contains python scripts and data neccessary to estimate the effect of recrystillization on the macroscopic material properties of tungsten (W) and W alloys. 
-The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$. 
+This project repository contains python scripts and data neccessary to estimate the effect of recrystillization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. 
 Second, a statistical estimate in the reduction of material hardness based on material recrystillization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
 
 ## Novel Contributions
@@ -18,28 +15,41 @@ This repository makes the following contributions, which are novel to the best o
 2. Development of Empirical Intra-material recrystillization fraction material model 
     1. Identification \& develoment of characteristic material model property
     2. Specification \& calibration of intra-material recrystillization fraction material model 
-3. Derivation and numerical validation of continuous material recrystillization fraction for non-isothermal conditions*
+3. Derivation and numerical validation of continuous material recrystillization fraction for non-isothermal conditions *
 
-*Building on discrete models proposed and used in:
-
-1. A. Durif _et al._ _Numerical study of the influence of tungsten recrystallization on the divertor component lifetime_ , International Journal of Fracture (2021) [DOI](https://doi.org/10.1007/s10704-021-00568-1)
-2. C. Li _et al._ _Numerical analysis of recrystallization behaviors for W monoblock under cyclic high heat flux_, Nuclear Materials and Energy (2022) [DOI](https://doi.org/10.1016/j.nme.2022.101227)
-3. F. Fernandes _et al._ _Mathematical model coupling phase transformation and temperature evolution during quench of steels_, Materials Science \& Technology (1985) [DOI](https://doi.org/10.1179/mst.1985.1.10.838)
-4. W. Pumphrey Inter-relation of hardenability and isothermal transformation data, JISI (1948)
-
-## Data Sources
+*Building on discrete models proposed and used in A. Durif _et al._ , C. Li _et al._ , F. Fernandes _et al._ , W. Pumphrey
 
 # Material Recrystillization 
 
 ## Physical Description 
-Recrystallization of the warm-rolled tungsten plate is a thermally activated _phase-change_ process governed by jumps of individual tungsten atoms. At a macroscopic level, the recrystillization fraction $X$ in an _isothermal_ experiment is measured by monitoring the material hardness over time, judging the phase using the law of mixtures. The simplest mathematical model for this process begins with a spatial poisson distributed nucleation sites of the recrystillized material that grow exponentially until the entire volume of the new material is consumed by this new phase.
+Recrystallization of the warm-rolled tungsten plate is a thermally activated _phase-change_ process governed by jumps of individual tungsten atoms. At a macroscopic level, the isothermal recrystillization fraction $X(t)$ in an _isothermal_ experiment is measured by monitoring the material hardness over time, judging the phase using the law of mixtures.
 
 ## Mathematical Modeling of Recrystillization
 I assess the fitting and extrapolative capabilities of two models (1) The (modified) Johnson–Mehl–Avrami–Kolmogorov (JMAK) model and (2) a generalized logistic (GL) model to fit observed experimental data by sampling the model(s) parameter posterior probability distribution functions (referred to as the _posteriors_) implied by an assumed gaussian error model on the experimental data. This is completed in two fashions (1) considered data sets in an independent manner and obtaining seperate parameter posteriors for each data set, and (2) proposing an empirical model that allows joint calibration across data sets. The notebooks used to develop this calibration are contained in [data_exploration](/data_exploration/) and [model_inference](/model_inference/).
 
+### Mathematical Models
+The selected models are quite similar though not identical. The like parameters in each model play similar roles.
+
+#### Johnson–Mehl–Avrami–Kolmogorov (JMAK) Model
+The parameters of interest are the incubation time $t_{inc}$, the exponent, $n$, and the rate coefficient $b$. $A_1,B_1,A_2,B_2$ are parameters involved in the Arrhenius process description of the temperature dependence of $b$ and $t_{inc}$ on $T$. 
+
+$
+X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)} + \epsilon \\ 
+b(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+t_{inc}(T) = A_2 \exp{\left(B_2/T \right)} \\ 
+$
+
+#### Generalized Logistic (GL) Model
+We suppose that the recrystillization fraction may be modeled using a (generalized) logistic (GL) growth function. The temperature dependence follows through the Arrhenius process modeled for the growth rate $B$ and starting time $M$.
+
+$
+X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}} \\ 
+B(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+M(T) = A_2 \exp{\left(B_2/T \right)} \\ 
+$
 
 ### Bayesian Calibration of Recrystillization Fraction State Function
-The general structure for calibration adopted here assumes that we have a _parametric model_ for recrystillization fraction $X = f(t,T ;\theta)$ which is continuous in time $t$ and _isothermal_ temperature $T$ with some parameter vector $\theta \in \mathbb{R}^{p}$ ($p = 5$ for both GL and JMAK models). if we have data $\mathcal{D} = \{(t_i,T_i),X_i\}_{i = 1}^n$ that is observations of recrystillization fraction $X_i$ at time $t_i$ and isothermal temperature $T_i$ then the error between the observation and model follow a gaussian error structure:
+The general structure for calibration adopted here assumes that we have a _parametric model_ for recrystillization fraction $X(t,T) = f(t,T ;\theta)$ which is continuous in time $t$ and _isothermal_ temperature $T$ with some parameter vector $\theta \in \mathbb{R}^{p}$ ($p = 5$ for both GL and JMAK models). With data $\mathcal{D} = \{(t_i,T_i),X_i\}_{i = 1}^n$, that is, observations of recrystillization fraction $X_i$ at time $t_i$ and isothermal temperature $T_i$ then the error between the observation and model follow a gaussian error structure:
 
 $
 X_i \sim \mathcal{N}(f(t_i,T_i;\theta),\sigma^2 \mathbf{I} + \Xi)
@@ -51,27 +61,28 @@ $
 p(\theta | \mathcal{D}) \propto \mathcal{L}(\mathcal{D} | \theta) p(\theta)
 $
 
-Despite the simple specification of the problem, the specifics involved in estimation of $\theta$ are involved due to the exponential,non-linear dependence of recrystillization fraction $X$ on both $t$ and $T$. The following outline gives a brief overview of how I estimate $p(\theta | \mathcal{D})$ with specifics of both the JMAK and GL detailed in [recrystillization_inference.ipynb](/model_inference/recrystillization_inference.ipynb)
+Despite the simple specification of the problem, the specifics involved in estimation of $\theta$ are involved due to the non-linear dependence of recrystillization fraction $X$ on both $t$ and $T$. The following outline overviews how I estimate $p(\theta | \mathcal{D})$ with specifics of both the JMAK and GL detailed in [recrystillization_inference.ipynb](/model_inference/recrystillization_inference.ipynb)
 
 #### Estimation of Arrhenius Process Parameters via Linear Regression
-Both the GL and JMAK models are fairly nonlinear and it is useful to obtain good initial guesses model parameters by linearization and subsequent  parameter approximate estimation in the notebooks [arrhenius_process_esimation.ipynb](data_exploration/arrhenius_process_estimation.ipynb).
+It is useful to obtain good initial guesses model parameters by linearization and subsequent  parameter approximate estimation in the notebooks [arrhenius_process_esimation.ipynb](data_exploration/arrhenius_process_estimation.ipynb).
 
 #### Initial Estimation Using Non-Linear Least Squares
-Bulding upon the results of [arrhenius_process_esimation.ipynb](data_exploration/arrhenius_process_estimation.ipynb), I used a non-linear least squares approach to refine the least squares estimation of the model parameters prior to inference [initial_least_squares_comparison.ipynb](data_exploration/initial_least_squares_comparison.ipynb).
+Bulding upon the results of [arrhenius_process_esimation.ipynb](data_exploration/arrhenius_process_estimation.ipynb), I used a non-linear least squares approach to the estimate of model parameters prior to inference [initial_least_squares_comparison.ipynb](data_exploration/initial_least_squares_comparison.ipynb).
 
 #### Seperate Inference Across Data Sets
-
+In [recrystillization_inference.ipynb](/model_inference/recrystillization_inference.ipynb) I calibrated both the JMAK and GL models to each recrystillization fraction data set independently, using the [prior_estimates](data_exploration/initial_least_squares_comparison.ipynb) of model parameters.
 
 #### Latent Variables for Each Data Sets 
+Drawing conclusions about the correlation of various recrystillization fraction models observed here [here](/model_inference/recrystillization_inference.ipynb), I explore the potential of these relationships in [latent_variable_selection](/model_inference/latent_variable_selection.ipynb) for reducing model complexity. I propose and calibrate a hierarrchical model for recrsystillization across data sets in [hierarchical_recrystillization.ipynb](/model_inference/hierarchical_recystillization_inference.ipynb).
 
 ### Extending the Recrystillization Fraction State Function Model(s) to Non-isothermal Conditions
-TO - DO
+Recrystillization experiments are performed isothermally, and the subsequent modeling assumes this condition. It is often the case that isothermal/constant conditions can NOT be relied upon. I extend the continous time isothermal JMAK and GL models to continous time non-isothermal analougues, inspired by discrete formulations in the literature (1-4) in [nonisothermal_modeling](/nonisothermal_modeling) and verify the formulation [numerically](/nonisothermal_modeling/non-isothermal_rx.ipynb). The basic assumption is that the rate of temperature change does not effect the recrystiliation process.
 
 ### Estimating Reduction in Material Hardness
-Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding frational reduction in yield strength. 
-Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22}$ \%.
+Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding frational reduction in yield strength. Using measured tungsten hardness data during recrystillization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](/model_inference/hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22}$ \%.
 
 # Results
+Some results of this work are provided below. The full results are contained in each of the notebooks referenced in the above sections.
 
 ## Calibration Results
 The below figure shows visualizations of the JMAK and Generalized Logisitic models predictive distributions for recrystillization fraction calibrated to each of the five experimental data sets seperately [here](/model_inference/recrystillization_inference.ipynb), demonstrated for two temperatures. The dotted lines tracing the envelopes around the maximum likelihood predictions for either model (solid and dashed black lines) are 95% confidence intervals, based on the experimental error and model inadequecy discovered during calibration. There is little visual difference in the models ablities to predict the data once calibrated.
@@ -92,34 +103,36 @@ The next figure visually compares the predictive distributions using the combine
 
 _Posterior predictive distribution visualization comparison of JMAK vs. Generalized Logistic models fitted jointly to the various data sets_
 
-There is little visual difference between model posterior predictions obtained by calibration seperately to the datasets _vs._ jointly. 
+There is little visual difference between model posterior predictions obtained by calibration seperately to the datasets _vs._ jointly. The below table compares the model inadquency estimated standard deviation when calibrating each data set individually vs. the combined model form. The model inadequecy increases somewhat in each scenario however the quality of the predictions is not impacted significantly and the combined model provides a straightforward way to interpolate between different tungstens.
 
 
-## Sample Applications
+**Independent vs. Combined Error Comparison**: Recrystallization model inadequecy standard deviation comparison across datasets
+|                                |   Individual |   Combined |
+|:-------------------------------|-------------:|-----------:|
+| Lopez et al. (2015) - HR       |       0.0269 |     0.0394 |
+| Lopez et al. (2015) - MR       |       0.0763 |     0.0951 |
+| Richou et al. (2020) - Batch A |       0.0166 |     0.0442 |
+| Richou et al. (2020) - Batch B |       0.0117 |     0.0616 |
+| Yu et al. (2017)               |       0.0912 |     0.0935 |
 
-### Time-to-recrystillization
+**Provide ML/Mean/CI for combined model Paramters**
 
-**JMAK 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
-|                                |   ML |   Lower 95\% |   Upper 95% |
-|:-------------------------------|-----:|-------------:|------------:|
-| Richou et al. (2020) - Batch A | 1117 |         1081 |        1149 |
-| Lopez et al. (2015) - MR       | 1113 |         1108 |        1114 |
-| Richou et al. (2020) - Batch B | 1076 |         1017 |        1120 |
-| Lopez et al. (2015) - HR       |  937 |          933 |         952 |
-| Yu et al. (2017)               |  N/A |          N/A |         914 |
+## Nonisothermal Modeling Results
 
+## Data Sources and Work Cited
+I would like to acknowledge the exceptional scientific work and considerable effort in obtaining these measurements by the authors of the studies from where I obtained the recrystillization data:
 
-**Generalized Logistic 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
-|                                |   ML |   Lower 95\% |   Upper 95% |
-|:-------------------------------|-----:|-------------:|------------:|
-| Richou et al. (2020) - Batch A | 1123 |         1082 |        1145 |
-| Lopez et al. (2015) - MR       | 1115 |         1109 |        1115 |
-| Richou et al. (2020) - Batch B | 1075 |         1016 |        1107 |
-| Lopez et al. (2015) - HR       |  968 |          944 |         982 |
-| Yu et al. (2017)               |  867 |          N/A |         853 |
+### Reference Works
+1. A. Durif _et al._ _Numerical study of the influence of tungsten recrystallization on the divertor component lifetime_ , International Journal of Fracture (2021) [DOI](https://doi.org/10.1007/s10704-021-00568-1)
+2. C. Li _et al._ _Numerical analysis of recrystallization behaviors for W monoblock under cyclic high heat flux_, Nuclear Materials and Energy (2022) [DOI](https://doi.org/10.1016/j.nme.2022.101227)
+3. F. Fernandes _et al._ _Mathematical model coupling phase transformation and temperature evolution during quench of steels_, Materials Science \& Technology (1985) [DOI](https://doi.org/10.1179/mst.1985.1.10.838)
+4. W. Pumphrey Inter-relation of hardenability and isothermal transformation data, JISI (1948)
 
-
-
-### Non-isothermal Model Analysis
-
-![Non-isothermal Fraction Prediction](.git_images/jmak_glm_comparison.svg)
+### Data Sources
+1. A. Lopez, _Thermal Stability of Warm-Rolled Tungsten_, Ph.D. Thesis, Technical University of Denmark (2015).
+2. M. Richou _et al_. _Recrystillization at high temperature of two tungsten materials complying with the ITER specifications, Journal of Nuclear Materials_ (2020) [DOI](https://doi.org/10.1016/j.jnucmat.2020.152418)
+3. Yu _et al_. _Hardness loss and microstructure evolution of 90% hot-rolled pure tungsten at 1200-1350 C_, Fsion Engineering and Design (2017) [DOI](http://dx.doi.org/10.1016/j.fusengdes.2017.05.072)
+4. Wang _et al_. _Effects of thickness reduction on recrystillization process of warm-rolled pure tungsten plates at 1350 C_, Fusion engineering and Design (2017) [DOI](http://dx.doi.org/10.1016/j.fusengdes.2017.03.140)
+5. K. Tsuchida _et al._ _Recrystallization behavior of hot-rolled pure tungsten and its alloy plates during high-temperature annealing_ Nuclear Materials and Energy (2018) [DOI](https://doi.org/10.1016/j.nme.2018.04.004)
+6. M. Minissale _et al._ _A high power laser facility to conduct annealing tests at high temperature_ Review of Scientific Instruments (2020) [DOI](https://doi.org/10.1063/1.5133741)
+7. Ciucani _et al._ _Recovery and recrystallization kinetics of differently rolled, thin tungsten plates in the temperature range from 1325 °C to 1400 °C_ Nuclear Materials and Energy (2020) [DOI](https://doi.org/10.1016/j.nme.2019.100701)

@@ -1,0 +1,8 @@
+**Independent vs. Combined Error Comparison**:Recrystallization model inadequecy standard deviation comparison across datasets
+|                                |   individual |   combined |
+|:-------------------------------|-------------:|-----------:|
+| Lopez et al. (2015) - HR       |       0.0269 |     0.0394 |
+| Lopez et al. (2015) - MR       |       0.0763 |     0.0951 |
+| Richou et al. (2020) - Batch A |       0.0166 |     0.0442 |
+| Richou et al. (2020) - Batch B |       0.0117 |     0.0616 |
+| Yu et al. (2017)               |       0.0912 |     0.0935 |
