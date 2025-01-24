@@ -1,6 +1,6 @@
 # Overview
 
-**If you would like to jump straight into it, and look at the notebooks** please start [with the individual model inference](./model_inference/recrystallization_inference.ipynb).
+**If you would like to jump straight into it, and look at the notebooks** please start [with the individual model inference](./model_inference/recrystillization_inference.ipynb).
 
 ## Summary
 This project repository contains python scripts and data neccessary to estimate the effect of recrystallization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. 
