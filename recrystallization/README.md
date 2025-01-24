@@ -56,9 +56,7 @@ $X_i \sim \mathcal{N}(f(t_i,T_i;\theta),\sigma^2 \mathbf{I} + \Xi)$
 
 Where $\sigma^2$ is some model inadequecy and $\Xi = \text{diag}(\xi_i^2)$ are known experimental error. The joint distributions of the model errors is then the likelihood, which is related to the distribution of the paramter posteriors using [Bayes rule](https://en.wikipedia.org/wiki/Bayesian_statistics) as:
 
-$
-p(\theta | \mathcal{D}) \propto \mathcal{L}(\mathcal{D} | \theta) p(\theta)
-$
+$p(\theta | \mathcal{D}) \propto \mathcal{L}(\mathcal{D} | \theta) p(\theta)$
 
 Despite the simple specification of the problem, the specifics involved in estimation of $\theta$ are involved due to the non-linear dependence of recrystallization fraction $X$ on both $t$ and $T$. The following outline overviews how I estimate $p(\theta | \mathcal{D})$ with specifics of both the JMAK and GL detailed in [recrystallization_inference.ipynb](/model_inference/recrystallization_inference.ipynb)
 
@@ -123,7 +121,7 @@ The latent variable $\ln{(\overline{k})}$ is very similar between the two models
 Finally, the mean, maximum likelihood, and standard deviation of the latent variables for each tungsten, and the latent parameters for the combined model are provided in the below tables. These can be used in conjunction with the model specified [here](model_inference/hierarchical_recrystallization_inference.ipynb) to predict the recrystallization fraction of a particular tungsten at some time and temperature.
 
 **JMAK**: Summary of Posterior Distributons
-|                                |$\ln{(\overline{k})}$-- $\ln{(\overline{t})}$     |
+|                                |$\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$     |
 |                                |    ml |   mean |   std |     ml |   mean |   std |
 |:-------------------------------|------:|-------:|------:|-------:|-------:|------:|
 | Lopez et al. (2015) - HR       | 14.55 |  15.06 |  0.29 |  18.21 |  19.02 |  0.52 |
@@ -134,7 +132,7 @@ Finally, the mean, maximum likelihood, and standard deviation of the latent vari
 
 
 **Generalized Logistic** : Summary of Posterior Distributons
-|                                |$\ln{(\overline{k})}$-- $\ln{(\overline{t})}$   |
+|                                |$\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$   |
 |                                |    ml |   mean |   std |    ml |   mean |   std |
 |:-------------------------------|------:|-------:|------:|------:|-------:|------:|
 | Lopez et al. (2015) - HR       | 15.07 |  15.33 |  0.25 | 21.88 |  21.96 |  0.76 |

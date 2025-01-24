@@ -10,11 +10,11 @@ Using the calibrated models we can **predict the _time to recrytillization fract
 
 ![Time to Recrystillization](.git_images/jmak_ttr.svg)
 
-_Time to recrystillization of $X^* = 0.9$ for different tungstens as a function of temperature_
+_Time to recrystillization of_ $X^* = 0.9$ _for different tungstens as a function of temperature_
 
 If we fix our time at $t_{operating} = 1$ year, this corresponds to a unique temperature for each alloy. These temperatures are summarized in the below tables for the JMAK and GL models with 95% confidence intervals shown: ML means "most likely", an estimate made using the maximum likelihood estimate of the model paramters. The greater uncertainty in Richou et al.'s data means that the confidence intervals are considerably larger. Surprisingly, using the GL model produces much greater temperature estimates than the JMAK model for Lopez et al. (2015) - HR. 
 
-**JMAK 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
+**JMAK 1-year Recrystillization Temperature** [$^\circ$ C]: The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
 |                                |   ML |   Lower 95\% |   Upper 95% |
 |:-------------------------------|-----:|-------------:|------------:|
 | Richou et al. (2020) - Batch A | 1117 |         1081 |        1149 |
@@ -24,7 +24,7 @@ If we fix our time at $t_{operating} = 1$ year, this corresponds to a unique tem
 | Yu et al. (2017)               |  N/A |          N/A |         914 |
 
 
-**Generalized Logistic 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
+**Generalized Logistic 1-year Recrystillization Temperature** [$^\circ C$]: The temperature required to achieve a recrystillization fraction of $0.9$ after $1$ year.
 |                                |   ML |   Lower 95\% |   Upper 95% |
 |:-------------------------------|-----:|-------------:|------------:|
 | Richou et al. (2020) - Batch A | 1123 |         1082 |        1145 |
