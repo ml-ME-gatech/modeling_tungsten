@@ -32,20 +32,20 @@ The selected models are quite similar though not identical. The like parameters 
 #### Johnson–Mehl–Avrami–Kolmogorov (JMAK) Model
 The parameters of interest are the incubation time $t_{inc}$, the exponent, $n$, and the rate coefficient $b$. $A_1,B_1,A_2,B_2$ are parameters involved in the Arrhenius process description of the temperature dependence of $b$ and $t_{inc}$ on $T$. 
 
-
-$X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)} $
-$b(T) = A_1 \exp{\left(B_1/T \right)} $
-$t_{inc}(T) = A_2 \exp{\left(B_2/T \right)}$
-
+$
+X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)} \\ 
+b(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+t_{inc}(T) = A_2 \exp{\left(B_2/T \right)} \\ 
+$
 
 #### Generalized Logistic (GL) Model
 We suppose that the recrystallization fraction may be modeled using a (generalized) logistic (GL) growth function. The temperature dependence follows through the Arrhenius process modeled for the growth rate $B$ and starting time $M$.
 
-
-$X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}}$ 
-$B(T) = A_1 \exp{\left(B_1/T \right)} $
-$M(T) = A_2 \exp{\left(B_2/T \right)} $ 
-
+$
+X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}} \\ 
+B(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+M(T) = A_2 \exp{\left(B_2/T \right)} \\ 
+$
 
 ### Bayesian Calibration of recrystallization Fraction State Function
 The general structure for calibration adopted here assumes that we have a _parametric model_ for recrystallization fraction $X(t,T) = f(t,T ;\theta)$ which is continuous in time $t$ and _isothermal_ temperature $T$ with some parameter vector $\theta \in \mathbb{R}^{p}$ ($p = 5$ for both GL and JMAK models). With data $\mathcal{D} = \{(t_i,T_i),X_i\}_{i = 1}^n$, that is, observations of recrystallization fraction $X_i$ at time $t_i$ and isothermal temperature $T_i$ then the error between the observation and model follow a gaussian error structure:
