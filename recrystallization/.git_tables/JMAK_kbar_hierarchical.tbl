@@ -1,0 +1,8 @@
+**JMAK $\ln{(\overline{k})}$**: Summary of Posterior Distributons
+|                                |    ml |   mean |   std |
+|:-------------------------------|------:|-------:|------:|
+| Lopez et al. (2015) - HR       | 14.55 |  15.06 |  0.29 |
+| Lopez et al. (2015) - MR       | 28.57 |  27.9  |  0.18 |
+| Richou et al. (2020) - Batch A | 22.93 |  25.58 |  0.98 |
+| Richou et al. (2020) - Batch B | 19.11 |  21.45 |  0.87 |
+| Yu et al. (2017)               | 13.84 |  14.05 |  0.38 |

@@ -1,0 +1,8 @@
+**Generalized Logistic $\ln{(\overline{k})}$**: Summary of Posterior Distributons
+|                                |    ml |   mean |   std |
+|:-------------------------------|------:|-------:|------:|
+| Lopez et al. (2015) - HR       | 15.07 |  15.33 |  0.25 |
+| Lopez et al. (2015) - MR       | 28.68 |  27.88 |  0.2  |
+| Richou et al. (2020) - Batch A | 24.23 |  25.85 |  0.86 |
+| Richou et al. (2020) - Batch B | 19.12 |  21.54 |  0.83 |
+| Yu et al. (2017)               | 13.86 |  14.09 |  0.38 |
