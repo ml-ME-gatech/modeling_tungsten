@@ -35,11 +35,11 @@ The selected models are quite similar though not identical. The like parameters 
 #### Johnson–Mehl–Avrami–Kolmogorov (JMAK) Model
 The parameters of interest are the incubation time $t_{inc}$, the exponent, $n$, and the rate coefficient $b$. $A_1,B_1,A_2,B_2$ are parameters involved in the Arrhenius process description of the temperature dependence of $b$ and $t_{inc}$ on $T$. 
 
-$
+\begin{align*}
 X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)} \\ 
 b(T) = A_1 \exp{\left(B_1/T \right)} \\ 
 t_{inc}(T) = A_2 \exp{\left(B_2/T \right)} \\ 
-$
+\end{align*}
 
 #### Generalized Logistic (GL) Model
 We suppose that the recrystillization fraction may be modeled using a (generalized) logistic (GL) growth function. The temperature dependence follows through the Arrhenius process modeled for the growth rate $B$ and starting time $M$.
