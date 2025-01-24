@@ -67,7 +67,7 @@ It is useful to obtain good initial guesses model parameters by linearization an
 Bulding upon the results of [arrhenius_process_esimation.ipynb](./data_exploration/arrhenius_process_estimation.ipynb), I used a non-linear least squares approach to the estimate of model parameters prior to inference [initial_least_squares_comparison.ipynb](./data_exploration/initial_least_squares_comparison.ipynb).
 
 #### Seperate Inference Across Data Sets
-In [recrystallization_inference.ipynb](./model_inference/recrystallization_inference.ipynb) I calibrated both the JMAK and GL models to each recrystallization fraction data set independently, using the [prior_estimates](data_exploration/initial_least_squares_comparison.ipynb) of model parameters.
+In [recrystallization_inference.ipynb](./model_inference/recrystillization_inference.ipynb) I calibrated both the JMAK and GL models to each recrystallization fraction data set independently, using the [prior_estimates](data_exploration/initial_least_squares_comparison.ipynb) of model parameters.
 
 #### Latent Variables for Each Data Sets 
 Drawing conclusions about the correlation of various recrystallization fraction models observed here [here](/model_inference/recrystallization_inference.ipynb), I explore the potential of these relationships in [latent_variable_selection](/model_inference/latent_variable_selection.ipynb) for reducing model complexity. I propose and calibrate a hierarrchical model for recrsystillization across data sets in [hierarchical_recrystallization.ipynb](/model_inference/hierarchical_recystillization_inference.ipynb).
