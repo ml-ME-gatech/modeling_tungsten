@@ -48,8 +48,16 @@ $B(T) = A_1 \exp{\left(B_1/T \right)} $
 
 $M(T) = A_2 \exp{\left(B_2/T \right)} $
 
+
+```math
+X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}} \\ 
+B(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+M(T) = A_2 \exp{\left(B_2/T \right)} \\ 
+```
+
+
 ### Bayesian Calibration of recrystallization Fraction State Function
-The general structure for calibration adopted here assumes that we have a _parametric model_ for recrystallization fraction $X(t,T) = f(t,T ;\theta)$ which is continuous in time $t$ and _isothermal_ temperature $T$ with some parameter vector $\theta \in \mathbb{R}^{p}$ ($p = 5$ for both GL and JMAK models). With data $\mathcal{D} = \{(t_i,T_i),X_i\}_{i = 1}^n$, that is, observations of recrystallization fraction $X_i$ at time $t_i$ and isothermal temperature $T_i$ then the error between the observation and model follow a gaussian error structure:
+The general structure for calibration adopted here assumes that we have a _parametric model_ for recrystallization fraction $X(t,T) = f(t,T ;\theta)$ which is continuous in time $t$ and _isothermal_ temperature $T$ with some parameter vector $\theta \in \mathbb{R}^{p}$ ($p = 5$ for both GL and JMAK models). With data $\mathcal{D} = '\{(t_i,T_i),X_i\}'_{i = 1}^n$, that is, observations of recrystallization fraction $X_i$ at time $t_i$ and isothermal temperature $T_i$ then the error between the observation and model follow a gaussian error structure:
 
 
 $X_i \sim \mathcal{N}(f(t_i,T_i;\theta),\sigma^2 \mathbf{I} + \Xi)$
