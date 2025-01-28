@@ -1,14 +1,14 @@
-## Summary
+# Overview
 
-The notebooks in this directory are concerned with developing empirical engineering material property models for tungsten alloys using data available form the literature. The analyis of the consists of (1) exploration/initial visualization (notebooks ending with "exploration") (2) model development (notebooks ending with "modeling") and (3) an example extension \& application (the notebook [parametric_application](parametric_application.ipynb)). The specific material properties are:
+Empirical engineering material property models for tungsten alloys are developed in these notebooks using data reported in scientific literature along with standard methods and techniques from regression analysis. **If you would like to begin immediately browsing notebooks please start with [modeling ultimate tensile strength](uts_modeling.ipynb).**
+
+## Summary
+The analysis developed in the notebooks consists of (1) exploration/initial visualization (notebooks ending with "exploration") (2) model development (notebooks ending with "modeling") and (3) an example extension \& application (the notebook [parametric_application](parametric_application.ipynb)). The specific material properties are:
 
 1. Ultimate Tensile Stress:the ultimate stress sustained by a material during uniaxial testing, a measure of material strength.
 2. Uniform Elongation: the (percent) elongation of the material at the Ultimate Tensile Stress measured during uniaxial testing, a measure of material ductility.
 3. Thermal Conductivity: a measure of the material's ability to conduct heat.
 4. Creep stress: a measure of the material's endurance to sustained loads over long periods of time.
-
-### Goals
-The overall goal is to assess the ability of various regression models to fit observed exerpimental data. The secondary goal is to use these models to assess the variablity of these material properties across material _alloys_, metals that have different compositions intended to enhance some desired material property. Finally, to develop an interpretable visualization procedure for _paramterized_ models that neatly allows me to assess "how good" an alloy needs to be for a specific application, see the below figure.
 
 If you woud like to review the contents of this directory comprehensively, please follow this order:
 
@@ -21,3 +21,16 @@ If you woud like to review the contents of this directory comprehensively, pleas
 7. [creep_modeling.ipynb](creep_modeling.ipynb) 
 
 ![Parametric representation of hypothetical new material, compared with existing materials. _cf._ [parametric_application.ipynb](parametric_application.ipynb) for details](images/parametric_material_plot.svg)
+
+
+## Results 
+
+### Ultimate Tensile Stress
+
+![Ultimate Tensile Stress](./.git_images/uts_data_fit.svg)
+
+### Uniform Elongation
+![Uniform Elongation](./.git_images/ue_data_fit.svg)
+
+### Conductivity
+![Conductivity](./.git_images/conductivity_data_fit.svg)
