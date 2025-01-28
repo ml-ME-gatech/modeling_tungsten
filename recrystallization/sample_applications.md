@@ -44,8 +44,39 @@ It is often the case that the temperature experienced by the tungsten is not iso
 _Nonisothermal recrystilization fractions using several different temperature profiles_
 
 #### 2b. Non-isothermal Model Interpretation
+The non-isothermal model for recrystillization in the JMAK model is:
+$Y(t)  = \begin{cases}
+0 \qquad & t \leq t_0 \\ 
+Y^{\dagger}(t - t_0) \qquad & t > t_0 \\ 
+\end{cases}$
+
+$t_0 = \rho^{-1}(1) \qquad \rho = \int \frac{d \tau}{t_{inc}(T(\tau))}$
+
+$Y^{\dagger} = 1 - \exp{\left\{- \left( \int b(T(\tau)) d\tau \right)^n  \right\}}$
+
+Importantly, there is no _direction_ associated with these integrals, meaning that the _order_ of temperatures does not matter, only the integral. That is to say the functions:
+
+$T(t) = \frac{\bar{T}}{2} (1 + t) \qquad 0 \leq t \leq 1$
+
+and 
+
+$T(t) = \frac{\bar{T}}{2} (2 - t) \qquad 0 \leq t \leq 1$
+
+will result in the same recrystillization fractions at $t = 1$ (or relative incubation fraction), despite the fact that the first function is increasing whilst the second decreasing. An identical conclusion may be drawn from the non-isothermal formulation of the GL model.
 
 ### 3. Using the Combined Model 
 
 #### 3a. Extending Combined Model to Calibrate with Limited Data
+The recrystilization experimental data published in [K. Tsuchida](https://www.sciencedirect.com/science/article/pii/S2352179117301886?via%3Dihub) for several tungsten alloys demonstrates a common situtation: Limited data is taken during an experiment to demonstrate the phenomonon of recrystillization, but not enough to fit the 2D function $X(t,T)$. The previous inferences using the hierarchical model 
+
+$p(\mathbf{c} | \mathcal{D}) = \int p(\mathbf{c},\mathbf{\overline{k}},\mathbf{\overline{t}} | \mathcal{D}) d \mathbf{\overline{k}} d \mathbf{\overline{t}}$
+
+Which may be treated as a _prior_ for a _new_ data set $\mathcal{D}^{new} = \{(\mathbf{X,t,T})_{new}\} $ (which has only one set). We want to estimate $\overline{k},\overline{t}$ for this data set. The below figure plots predictive posteriors of phase fraction $X$ for tungsten alloys from [K. Tsuchida](https://www.sciencedirect.com/science/article/pii/S2352179117301886?via%3Dihub) for three tungsten alloys using this approach (developed [here](./model_inference/inference_extension.ipynb)).
+
+![Posterior Predictions on New Tungsten Alloys](.git_images/extensions_alloys_phase_fraction_vs_time_temperature.svg)
+
+The Figure below compares marginal distributions for $\overline{k}$, the characteristic of recrystillization speed, obtained for the pure tungstens with sufficient data, and the tungsten alloys with limited data. The K-doped 3% Re alloy exhibits recrystillization resistance while the pure W and K-doped W from this study are not very resistant to recrystilization.
+
+![Posterior Probability Distributions of New Tungsten Alloys](.git_images/latent_variable_posterior_extension.svg)
+
 #### 3b. Extrapolating to Future Tungsten/Tungsten Alloys
