@@ -3,8 +3,8 @@
 **If you would like to jump straight into it, and look at the notebooks** please start [with the individual model inference](./model_inference/recrystillization_inference.ipynb).
 
 ## Summary
-This project repository contains python scripts and data neccessary to estimate the effect of recrystallization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. 
-Second, a statistical estimate in the reduction of material hardness based on material recrystallization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
+This project repository contains python scripts and data neccessary to estimate the effect of recrystallization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. Second, a statistical estimate in the reduction of material hardness based on material recrystallization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
+A few sample applications of the results of this inference and development are summarized in [sample_applications.md](./sample_applications.md)
 
 ## Novel Contributions
 This repository makes the following contributions, which are novel to the best of my knowledge.
@@ -32,28 +32,22 @@ The selected models are quite similar though not identical. The like parameters 
 #### Johnson–Mehl–Avrami–Kolmogorov (JMAK) Model
 The parameters of interest are the incubation time $t_{inc}$, the exponent, $n$, and the rate coefficient $b$. $A_1,B_1,A_2,B_2$ are parameters involved in the Arrhenius process description of the temperature dependence of $b$ and $t_{inc}$ on $T$. 
 
-
-$X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)}$
-
-$b(T) = A_1 \exp{\left(B_1/T \right)}$
-
-$t_{inc}(T) = A_2 \exp{\left(B_2/T \right)} $
+```math
+\begin{matrix}
+X(t,T) = 1 - \exp{\left( -b^n (t - t_{inc})^n \right)} \\ 
+b(T) = A_1 \exp{\left(B_1/T \right)} \\ 
+t_{inc}(T) = A_2 \exp{\left(B_2/T \right)} 
+\end{matrix}
+```
 
 #### Generalized Logistic (GL) Model
 We suppose that the recrystallization fraction may be modeled using a (generalized) logistic (GL) growth function. The temperature dependence follows through the Arrhenius process modeled for the growth rate $B$ and starting time $M$.
-
-$X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}}$
-
-$B(T) = A_1 \exp{\left(B_1/T \right)} $ 
-
-$M(T) = A_2 \exp{\left(B_2/T \right)} $
-
 
 ```math
 \begin{matrix}
 X(t,T) = \frac{1}{(1 + e^{-B (t - M)})^{1/\nu}} \\ 
 B(T) = A_1 \exp{\left(B_1/T \right)} \\ 
-M(T) = A_2 \exp{\left(B_2/T \right)} \\
+M(T) = A_2 \exp{\left(B_2/T \right)} 
 \end{matrix} 
 ```
 
