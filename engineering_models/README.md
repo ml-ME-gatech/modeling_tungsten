@@ -86,3 +86,12 @@ $$
 Thus providing a lower bound for $\varepsilon_{u,rx}(T)$. Demonstrative plots of the before/after recrystallization model effect are shown below for the K-W3%Re (H) alloy. 
 
 ![Effect of material recystalliation on material structural properties: K-W3\%Re (H)](./.git_images/K-W3pRe_Plate_(H)_UTS_and_UE.svg)
+
+## Data Sources and Work Cited
+I would like to acknowledge in particular the seminal work of [Nogami _et al_.]() for rigoursly testing, compiling, and analyzing several tungsten alloys, the primary resource for creating these property models.
+
+### Reference Works
+TO-DO
+
+### Data Sources
+TO-DO
