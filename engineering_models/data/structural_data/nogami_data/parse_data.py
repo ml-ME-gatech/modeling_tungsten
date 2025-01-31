@@ -4,9 +4,13 @@ from pathlib import WindowsPath
 from scipy.spatial.distance import cdist
 
 ALLOY_MAP = {'k_doped_w_3percent_re_plate_h':r'K-W3%Re Plate (H)',
+             'k_doped_w_3percent_re_rx_plate_h':r'K-W3%Re Plate (H) Rx',
+             'k_doped_w_3percent_re_rx_plate_l':r'K-W3%Re Plate (L) Rx',
               'k_doped_w_3percent_re_plate_l':r'K-W3%Re Plate (L)',
               'k_doped_w_plate_h':r'K-W Plate (H)',
+              'k_doped_w_rx_plate_h':r'K-W Plate (H) Rx',
               'pure_w_plate_h':r'W Plate (H)',
+              'pure_w_rx_plate_h':r'W Plate (H) Rx',
               'w_3percent_re_1percent_la2o3_plate_l':r'W3%Re-1%La2O3 Plate (L)',
               'w_3percent_re_plate_h':r'W3%Re Plate (H)',
               'w_3percent_re_plate_l':r'W3%Re Plate (L)'}
@@ -58,6 +62,7 @@ def main():
     
     for folder,label in folders.items():
         df = convert_folder_to_frame(folder,label)
+        print(df)
         df_list.append(df.copy())
     
     df = pd.concat(df_list,axis = 1)

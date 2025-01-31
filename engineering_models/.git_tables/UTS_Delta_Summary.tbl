@@ -1,0 +1,7 @@
+**$\Delta_{rx} S_u$**:Reduction in UTS due to recrystallization
+|                   |   Mean [MPa] |   Upper Bound [MPa] |
+|:------------------|-------------:|--------------------:|
+| W Plate (H)       |      271.761 |             278.717 |
+| K-W Plate (H)     |      251.897 |             287.211 |
+| K-W3%Re Plate (H) |      293.489 |             335.998 |
+| K-W3%Re Plate (L) |      212.309 |             290.847 |

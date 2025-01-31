@@ -1,0 +1,6 @@
+**$\Delta_{rx} \varepsilon{tr}$**:Reduction in TE due to recrystallization
+|                   |   Mean [%] |   Lower Bound [%] |
+|:------------------|-----------:|------------------:|
+| W Plate (H)       |   -36.5166 |          -35.7182 |
+| K-W Plate (H)     |   -38.3921 |          -33.5009 |
+| K-W3%Re Plate (H) |   -30.2196 |          -27.2861 |
