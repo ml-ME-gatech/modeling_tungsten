@@ -3,22 +3,25 @@
 Empirical engineering material property models for tungsten alloys are developed in these notebooks using data reported in scientific literature along with standard methods and techniques from regression analysis. **If you would like to begin immediately browsing notebooks please start with [modeling ultimate tensile strength](uts_modeling.ipynb).**
 
 ## Summary
-The analysis developed in the notebooks consists of (1) exploration/initial visualization (notebooks ending with "exploration") (2) model development (notebooks ending with "modeling") and (3) an example extension \& application (the notebook [parametric_application](parametric_application.ipynb)). The specific material properties are:
+The analysis developed in the notebooks consists of [exploration/initial visualization](./data_exploration/), [model development](./modeling/) and [additional visualizations](./visualizations/). The specific material properties modeled are:
 
-1. Ultimate Tensile Stress:the ultimate stress sustained by a material during uniaxial testing, a measure of material strength.
-2. Uniform Elongation: the (percent) elongation of the material at the Ultimate Tensile Stress measured during uniaxial testing, a measure of material ductility.
-3. Thermal Conductivity: a measure of the material's ability to conduct heat.
-4. Creep stress: a measure of the material's endurance to sustained loads over long periods of time.
+1. Ultimate Tensile Stress: $S_u$ or $S_{uts}$. the ultimate stress sustained by a material during uniaxial testing, a measure of material strength.
+2. Uniform Elongation: $\varepsilon_u$. The (percent) elongation of the material at $S_{uts}$ measured during uniaxial testing, a measure of material ductility.
+3. Thermal Conductivity: $k$.  A measure of the material's ability to conduct heat.
+4. Creep stress:$S_t$ a measure of the material's endurance to sustained loads over long periods of time.
+5. The impact of material recrystallization on $S_u$ and $\varepsilon_u$.
 
 If you woud like to review the contents of this directory comprehensively, please follow this order:
 
-1. [uts_data_exploration.ipynb](uts_data_expoloration.ipynb)
-2. [uts_modeling.ipynb](uts_modeling.ipynb)
-3. [ue_data_exploration.ipynb](ue_data_exploration.ipynb)
-4. [ue_modeling.ipynb](ue_modeling.ipynb)
-5. [conductivity_data_exploration.ipynb](conductivity_data_exploration.ipynb)
-6. [conductivity_modeling.ipynb](conductivity_modeling.ipynb)
-7. [creep_modeling.ipynb](creep_modeling.ipynb) 
+1. [uts_data_exploration.ipynb](./data_exploration/uts_data_expoloration.ipynb) $\to$ [uts_modeling.ipynb](./modeling/uts_modeling.ipynb)
+2. [ue_data_exploration.ipynb](./data_exploration/ue_data_exploration.ipynb) $\to$ [ue_modeling.ipynb](./modeling/ue_modeling.ipynb)
+3. [conductivity_data_exploration.ipynb](./data_exploration/conductivity_data_exploration.ipynb) $\to$  [conductivity_modeling.ipynb](./modeling/conductivity_modeling.ipynb)
+4. [creep_modeling.ipynb](./modeling/creep_modeling.ipynb) 
+5. [effect_of_recrystillization.ipynb](./data_exploration/effect_of_recrystillization.ipynb) $\to$ [recystallization_reduction.ipynb](./modeling/recrystallization_reduction.ipynb)
+
+The below image demonstrates a visual comparison of the material properties between two tungsten alloys, specifically K-W3\%Re Plate (H) and K-W3\% Re Plate (L). The three lower plots demonstrate the temperature dependent  $S_{uts}$, $\varepsilon_{u}$  and $k$. The upper right hand plot shows $S_t$ of the material.
+
+The relationship between these properties can be summarized using a single scalar paramter for each using models fit to the data, and directly compared as shown by the chart in the upper left hand corner. This provides a useful visual tool for comparing a "new" alloy, that may be determined by other analysis to be neccessary to achieve target equipment performance.
 
 ![Parametric representation of hypothetical new material, compared with existing materials. _cf._ [parametric_application.ipynb](parametric_application.ipynb) for details](images/parametric_material_plot.svg)
 
