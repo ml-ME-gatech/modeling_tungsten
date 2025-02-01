@@ -1,8 +1,8 @@
 **Generalized Logistic 1-year Recrystillization Temperature [$^\circ C$]**:The temperature required to achieve a recrystillization fraction of $0.1$ after $1$ year.
 |                                |   ML |   Lower 95\% |   Upper 95% |
 |:-------------------------------|-----:|-------------:|------------:|
-| Richou et al. (2020) - Batch A | 1077 |         1027 |        1100 |
-| Lopez et al. (2015) - MR       | 1088 |         1076 |        1087 |
-| Richou et al. (2020) - Batch B | 1020 |          N/A |        1057 |
+| Richou et al. (2020) - Batch A | 1077 |         1026 |        1103 |
+| Lopez et al. (2015) - MR       | 1088 |          N/A |        1095 |
+| Richou et al. (2020) - Batch B | 1020 |          N/A |        1060 |
 | Lopez et al. (2015) - HR       |  965 |          938 |         980 |
-| Yu et al. (2017)               |  865 |          N/A |         846 |
+| Yu et al. (2017)               |  865 |          N/A |         849 |
