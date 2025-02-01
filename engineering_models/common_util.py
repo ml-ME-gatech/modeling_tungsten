@@ -18,10 +18,83 @@ from matplotlib.transforms import Affine2D
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 from statsmodels.regression.linear_model import OLS,OLSResults
+from dataclasses import dataclass
+import sys
+
+import sys
+if 'win' in sys.platform.lower():
+    from pathlib import WindowsPath as Path
+else:
+    from pathlib import PosixPath as Path
+
+#globals
+_PARENTDIR = Path(str(__file__)).parent.resolve()
+_MAKE_PROJECT_PATH_DIR = False
 
 """
 Common utilities used among the jupyter notebooks in this folder
 """
+
+class mk_pdir:
+
+    """
+    context manager to create a directory if it doesn't
+    exist, used in combination with ProjectPaths
+    """
+    
+    def __init__(self):
+        pass
+
+    def __enter__(self,*args,**kwargs):
+        global _MAKE_PROJECT_PATH_DIR
+        _MAKE_PROJECT_PATH_DIR = True
+    
+    def __exit__(self,*args,**kwargs):
+        global _MAKE_PROJECT_PATH_DIR
+        _MAKE_PROJECT_PATH_DIR = False
+
+class ProjectPaths:
+
+    _defaults = {'MODEL': '.model',
+                 'SCRATCH': '.scratch',
+                'STRUCTURAL_DATA': 'data/structural_data',
+                'CONDUCTIVITY_DATA': 'data/conductivity_data',
+                'MODELING': 'modeling',
+                'DATA_EXPLORATION': 'data_exploration',
+                'GIT_IMAGES': '.git_images',
+                'GIT_TABLES': '.git_tables',
+                'IMAGES': 'images',
+                 'parent': _PARENTDIR}
+    
+    def __init__(self,**kwargs):
+        for dkey,dvalue in self._defaults.items():
+            if dkey not in kwargs:
+                kwargs[dkey] = dvalue
+        
+        self.paths = kwargs
+        if not isinstance(self.paths['parent'], Path):
+            raise TypeError(f'parent must be of type: {type(Path)} for expected behavior')
+    
+    def __getattr__(self, __name: str) -> Path:
+        try:
+            path =  self.paths[__name] if __name == 'parent' else self.paths['parent'].joinpath(self.paths[__name])
+            if not path.exists() and _MAKE_PROJECT_PATH_DIR:
+                path.mkdir(parents = True)
+            return path
+        
+        except KeyError as ke:
+            raise KeyError(f'path {__name} not in predifined paths\n' + str(ke))
+
+
+def setup_plotting_format():
+    
+    from matplotlib import rc
+    rc('font',**{'family':'serif','serif':['Times New Roman'],'weight': 'bold'})
+    plt.rcParams["font.weight"] = "bold"
+    plt.rcParams["axes.labelweight"] = "bold"
+    rc('text', usetex=True)
+    plt.rcParams['text.latex.preamble'] = "".join([r"\usepackage{newtxtext,newtxmath}",r"\boldmath"])
+
 
 class NogamiData:
 
@@ -34,30 +107,66 @@ class NogamiData:
 
         self.key = key
         self.data = pd.read_csv(data_file,index_col = 0)
+        self.cols = set(self.data.columns)
+
+    
+    def _fancy_key(self,key: str) -> str:
+        if key in self.cols:
+            return key
+        else:
+            for col in self.cols:
+                if col.endswith(key) and col.startswith(self.key):
+                    return col
+
+    def get_df(self,key: str,keep_column: bool = True) -> pd.DataFrame:
+        df = self.data[[self._fancy_key(key)]]
+        if not keep_column:
+            df.columns = [self.key]
+
+        return df
     
     def __getitem__(self,key: str) -> Tuple[np.ndarray,np.ndarray]:
-
-        data = self.data[[key]]
+        
+        _key = self._fancy_key(key)
+        data = self.data[[_key]]    
         data.dropna(inplace = True)
-        return data.index.to_numpy()[:,np.newaxis],data[key].to_numpy()
+        return data.index.to_numpy()[:,np.newaxis],data[_key].to_numpy()
     
     def keys(self):
         return [column for column in self.data.columns if self.key in column]
     
 class NogamiUTSData(NogamiData):
 
-    def __init__(self):
-        super().__init__('UTS','structural_data/nogami_data.csv')
+    def __init__(self, project_paths: ProjectPaths = ProjectPaths()):
+        
+        if isinstance(project_paths,str):
+            super().__init__('UTS',project_paths)
+        else:
+            super().__init__('UTS',project_paths.STRUCTURAL_DATA.joinpath('nogami_data.csv'))
 
 class NogamiUEData(NogamiData):
 
-    def __init__(self):
-        super().__init__('UE','structural_data/nogami_data.csv')
+    def __init__(self,project_paths: ProjectPaths = ProjectPaths()):
+        if isinstance(project_paths,str):
+            super().__init__('UE',project_paths)
+        else:
+            super().__init__('UE',project_paths.STRUCTURAL_DATA.joinpath('nogami_data.csv'))
+
+class NogamiTEData(NogamiData):
+
+    def __init__(self,project_paths: ProjectPaths = ProjectPaths()):
+        if isinstance(project_paths,str):
+            super().__init__('TE',project_paths)
+        else:
+            super().__init__('TE',project_paths.STRUCTURAL_DATA.joinpath('nogami_data.csv'))
 
 class NogamiConductivityData(NogamiData):
 
-    def __init__(self):
-        super().__init__('','conductivity_data/nogami_data.csv')
+    def __init__(self,project_paths: ProjectPaths = ProjectPaths()):
+        if isinstance(project_paths,str):
+            super().__init__('','conductivity_data/nogami_data.csv')
+        else:
+            super().__init__('',project_paths.CONDUCTIVITY_DATA.joinpath('nogami_data.csv'))
 
 class NogamiDataCollection:
     material_to_cond = {'K-W Plate (H)': 'K-doped W (H) Plate',
@@ -70,6 +179,7 @@ class NogamiDataCollection:
     def __init__(self):
         self.uts = NogamiUTSData()
         self.ue = NogamiUEData()
+        self.te = NogamiTEData()
         self.conductivity = NogamiConductivityData()
 
     def uts_key(self,key: str) -> str:
@@ -81,8 +191,11 @@ class NogamiDataCollection:
     def conductivity_key(self,key: str) -> str:
         return self.material_to_cond[key]
     
+    def te_key(self,key: str) -> str:
+        return 'TE [%] ' + key
+    
     def __getitem__(self,key: str) -> Tuple[Tuple[np.ndarray]]:
-        return self.uts[self.uts_key(key)],self.ue[self.ue_key(key)],self.conductivity[self.conductivity_key(key)]
+        return self.uts[self.uts_key(key)],self.ue[self.ue_key(key)],self.conductivity[self.conductivity_key(key)],self.te[self.te_key(key)]
     
     def keys(self):
         return [key[10:].strip() for key in self.uts.keys()]
@@ -175,7 +288,8 @@ class OneDimensionalBasisExpansion:
 def feature_selection(x: np.ndarray,
                       y: np.ndarray,
                       features: List[TransformedFeature],
-                      scale = True):
+                      scale = True,
+                      cv = 5):
     """ 
     perform feature selection using Lasso/LARS regression
     and both AIC and cross validation critiera. 
@@ -187,7 +301,7 @@ def feature_selection(x: np.ndarray,
     """
 
     
-    lasso = [LassoLarsIC('aic'), LassoLarsCV(cv = 5)]
+    lasso = [LassoLarsIC('aic'), LassoLarsCV(cv = cv)]
     alpha,num_features = [], []
 
     
@@ -247,7 +361,8 @@ def power_derivative(p: float) -> np.ndarray:
 def get_k_most_commmon_feature_transform(data:List[Tuple[np.ndarray,np.ndarray]],
                                          k:int,
                                          input_features = None,
-                                         scale = True) -> List[str]:
+                                         scale = True,
+                                         cv = 5) -> List[str]:
 
     """
     get the K most common features across data sets, using the selected features 
@@ -269,7 +384,8 @@ def get_k_most_commmon_feature_transform(data:List[Tuple[np.ndarray,np.ndarray]]
     for (x,y) in data:
         features,msg = feature_selection(x,y, 
                                          features= [f for f in input_features],
-                                         scale = scale)
+                                         scale = scale,
+                                         cv = cv)
         
         data_len += x.shape[0] 
         
@@ -617,3 +733,16 @@ class LarsonMiller:
     def predict(self,t: np.ndarray,T: np.ndarray):      
         X = self._feature_transform(t,T,self.C,self.deg)
         return self.ols_results.predict(X)
+
+
+def markdown_table_from_df(df: pd.DataFrame,
+                            title: str,
+                            caption: str,
+                            replace_nan: str = 'N/A') -> str:
+    
+    title_caption = '**' + title + '**:' + caption + '\n'
+    table_str = df.to_markdown()
+    if replace_nan is not None:
+        table_str = table_str.replace('nan',replace_nan)
+
+    return title_caption + table_str + '\n'
