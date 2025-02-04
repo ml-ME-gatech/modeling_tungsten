@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from numpy.polynomial import Polynomial
 import copy
 from matplotlib.patches import Circle, RegularPolygon
-from matplotlib.path import Path
+from matplotlib.path import Path as MPath
 from matplotlib.projections.polar import PolarAxes
 from matplotlib.projections import register_projection
 from matplotlib.spines import Spine
@@ -531,7 +531,7 @@ def make_radar_plot(num_vars, frame='circle'):
             # autoconversion to circular arcs).
             if path._interpolation_steps > 1:
                 path = path.interpolated(num_vars)
-            return Path(self.transform(path.vertices), path.codes)
+            return MPath(self.transform(path.vertices), path.codes)
 
     class RadarAxes(PolarAxes):
 
@@ -589,7 +589,7 @@ def make_radar_plot(num_vars, frame='circle'):
                 # spine_type must be 'left'/'right'/'top'/'bottom'/'circle'.
                 spine = Spine(axes=self,
                               spine_type='circle',
-                              path=Path.unit_regular_polygon(num_vars))
+                              path=MPath.unit_regular_polygon(num_vars))
                 # unit_regular_polygon gives a polygon of radius 1 centered at
                 # (0, 0) but we want a polygon of radius 0.5 centered at (0.5,
                 # 0.5) in axes coordinates.
