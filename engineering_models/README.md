@@ -88,10 +88,32 @@ Thus providing a lower bound for $\varepsilon_{u,rx}(T)$. Demonstrative plots of
 ![Effect of material recystalliation on material structural properties: K-W3\%Re (H)](./.git_images/K-W3pRe_Plate_(H)_UTS_and_UE.svg)
 
 ## Data Sources and Work Cited
-I would like to acknowledge in particular the seminal work of [Nogami _et al_.]() for rigoursly testing, compiling, and analyzing several tungsten alloys, the primary resource for creating these property models.
+I would like to acknowledge in particular the seminal work of  [Nogami _et al._ (2021)](https://www.sciencedirect.com/science/article/pii/S0022311520311144) for rigoursly testing, compiling, and analyzing several tungsten alloys, the primary resource for creating these property models.
 
-### Reference Works
-TO-DO
+### Reference Works and Data Sources
 
-### Data Sources
-TO-DO
+#### Structural Data
+1. [Davis __et al._](https://www.sciencedirect.com/science/article/pii/S0022311598002852)
+2. [Garrison _et al._](https://www.sciencedirect.com/science/article/pii/S0022311518312479)
+3. [Habainy _et al._](https://www.sciencedirect.com/science/article/pii/S0022311515300568)
+4. [Miyazawa _et al._](https://www.sciencedirect.com/science/article/pii/S0022311519310451)
+5. [Rau, Moteff, Ladd](https://www.sciencedirect.com/science/article/pii/0022311567900050)
+6. [Rieth and Dafferner](https://www.sciencedirect.com/science/article/pii/S0022311505001352)
+7. [Stiechen](https://www.sciencedirect.com/science/article/pii/0022311576901124)
+8. [Yin _et al._](https://www.sciencedirect.com/science/article/pii/S0022311520300647)
+9. [Younger & Wright](https://ntrs.nasa.gov/citations/19700029060)
+10. [Nogami _et al._ (2021)](https://www.sciencedirect.com/science/article/pii/S0022311520311144)
+
+#### Creep Data
+1. [Rieth _et al._](https://www.researchgate.net/publication/233846142_Tungsten_as_a_Structural_Divertor_Material?enrichId=rgreq-609d89ba1687a54fb147ebe56d3b68da-XXX&enrichSource=Y292ZXJQYWdlOzIzMzg0NjE0MjtBUzozNDM2MDAxNDg4MjgxNjBAMTQ1ODkzMjA2NzcwOQ%3D%3D&el=1_x_3&_esc=publicationCoverPdf)
+
+#### Conductivity Data
+2. [Nogami _et al._ (2021)](https://www.sciencedirect.com/science/article/pii/S0022311520311144)
+3. [Roedig _et al._](https://www.sciencedirect.com/science/article/pii/S0022311504003162)
+4. [Tolias and EUROfusion MST1 Team](https://www.sciencedirect.com/science/article/pii/S2352179117300388)
+
+#### Recrystallization Stress-Strain Curves
+1. [Sheng _et al._](https://www.sciencedirect.com/science/article/pii/S0029549311008739)
+2. [Tano _et al._](https://www.scientific.net/MSF.838-839.272)
+3. [Wirtz _et al._](https://www.sciencedirect.com/science/article/pii/S0920379613005176)
+4. [Xie _et al._](https://www.sciencedirect.com/science/article/pii/S0022311517314344)

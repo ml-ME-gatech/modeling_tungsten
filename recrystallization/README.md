@@ -12,7 +12,7 @@ This repository makes the following contributions, which are novel to the best o
 2. Development of Empirical Intra-material recrystallization fraction material model 
     1. Identification \& develoment of characteristic material model property
     2. Specification \& calibration of intra-material recrystallization fraction material model 
-3. Demonstration of connection between discrete model formulations and General Additvity for continuous material recrystallization fraction for non-isothermal conditions *
+3. Demonstration of connection between discrete model formulations in the literature and General Additvity for continuous material recrystallization fraction for non-isothermal conditions *
 
 *With discrete models proposed and used in A. Durif _et al._ , C. Li _et al._ , F. Fernandes _et al._ , W. Pumphrey
 

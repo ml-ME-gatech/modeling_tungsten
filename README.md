@@ -1,13 +1,11 @@
 # Overview
-This project is concerned with modeling material structural and thermal properties for tungsten and tungsten alloys. In particular the material ultimate tensile stress (UTS), $S_u$ the material uniform elongation $\varepsilon_u$, the material creep stress $S_t$, and the conductivity $k$. Empirical models are proposed for incorporating the effect of material recrystallization, a phase change process that depends upon time and temperature. The primary statistical methods used in the repository are techniques from **linear regression (model selection, residual analysis, model adquecy checking)** and **Bayesian statistics (MCMC sampling, hierarchical modeling)**. 
+This project is concerned with modeling material structural and thermal properties for tungsten and tungsten alloys. In particular the material ultimate tensile stress (UTS), $S_u$ the material uniform elongation $\varepsilon_u$, the material creep stress $S_t$, and the conductivity $k$. Empirical models are proposed for incorporating the effect of material recrystallization, a phase change process that depends upon time and temperature. The primary statistical methods used in the repository are techniques from **linear regression (model selection, residual analysis, model adquecy checking)** and **Bayesian statistics (MCMC sampling, hierarchical modeling)**.  More detailed overviews for either are available in the `README.md`'s in [engineering_models](./engineering_models/) and [recrystallization](./recrystallization/) respectively. Full detail is contained in the notebooks referenced in these `README.md`'s in the folders.
 
 ## Highlights
 I've included some highlights and applications of the inference and modeling in this project below.
 ### Material Recrystallization
 
 #### Isothermal Recrystallization
-
-
 The figure below shows predicted isothermal recrystallization phase fraction $X: (t,T) \to [0,1]$ as a function of time at two different isotherms, with the model calibrated to data from [A. Lopez (2015)](https://orbit.dtu.dk/en/publications/thermal-stability-of-warm-rolled-tungsten). The solid black lines shows the maximum likelihood predictions while the dotted black lines show 95\% confidence intervals based on sampling from the posterior predictive distribution. The variable $X = 0$ when no recrystallization (a phase change process) has occured and $X = 1$ when the entire material has changed phase.
 
 ![Example Phase Fraction](./recrystallization/.git_images/Generalized%20Logistic_Lopez%20et%20al.%20(2015)%20-%20MR_data_example.svg)
@@ -56,8 +54,6 @@ Where $\Delta_{rx} S_u$ is the constant decrement in $S_u$ due to full recrystal
 The state properties $k(T),S_t(T),S_{u,0}(T),\varepsilon_{u,0}(T)$ are modeled empirically using data reported in scientific literature along with standard methods and techniques from linear regression analysis in the folder [engineering_models](./engineering_models/). 
 
 The isothermal recrystallization fraction $X(t,T)$ is highly nonlinear in both arguments, and the paramters for the model of $X(t,T)$ are estimated using bayesian statistics and MCMC methods, detailed in the notebooks in [recrystallization](./recrystallization/).
-
-Both of these subfolders have `README.md`'s with more detailed information regarding the model estimation procedures, and description of the results.
 
 ### Path Function Estimation
 Leveraging the principle of additivity, a simple extension to the isothermal recrystallization fraction $X(t,T)$ leads to the nonisothermal recrystallization fraction $Y(T(t))$ in continuous closed form, developed and validated [here](./recrystallization/nonisothermal_modeling/).
