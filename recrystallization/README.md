@@ -3,16 +3,16 @@
 **If you would like to jump straight into it, and look at the notebooks** please start [with the individual model inference](./model_inference/recrystillization_inference.ipynb).
 
 ## Summary
-This project repository contains python scripts and data neccessary to estimate the effect of recrystallization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystillized material based upon an arbitary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. Second, a statistical estimate in the reduction of material hardness based on material recrystallization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
+This project repository contains python scripts and data necessary to estimate the effect of recrystallization on the macroscopic material properties of tungsten (W) and W alloys. The goal is to develop a path function $Y(T(t)): \mathbb{R} \mapsto [0,1]$ which represents the fraction of recrystallized material based upon an arbitrary time history $T(t): \mathbb{R}_+ \to \mathbb{R}$ which is informed by experimental results and our understanding of the physical process. Second, a statistical estimate in the reduction of material hardness based on material recrystallization fraction, which is correlated to the material yield strength, an important macroscopic material property is detailed. 
 A few sample applications of the results of this inference and development are summarized in [sample_applications.md](./sample_applications.md)
 
 ## Novel Contributions
 This repository makes the following contributions, which are novel to the best of my knowledge.
 1. Bayesian parameter calibration and comparison of two models for material recrystallization fraction.
 2. Development of Empirical Intra-material recrystallization fraction material model 
-    1. Identification \& develoment of characteristic material model property
+    1. Identification \& development of characteristic material model property
     2. Specification \& calibration of intra-material recrystallization fraction material model 
-3. Demonstration of connection between discrete model formulations in the literature and General Additvity for continuous material recrystallization fraction for non-isothermal conditions *
+3. Demonstration of connection between discrete model formulations in the literature and General Additivity for continuous material recrystallization fraction for non-isothermal conditions *
 
 *With discrete models proposed and used in A. Durif _et al._ , C. Li _et al._ , F. Fernandes _et al._ , W. Pumphrey
 
@@ -24,7 +24,7 @@ Recrystallization of the warm-rolled tungsten plate is a thermally activated _ph
 ![Example Phase Fraction](.git_images/Generalized%20Logistic_Lopez%20et%20al.%20(2015)%20-%20MR_data_example.svg)
 
 ## Mathematical Modeling of recrystallization
-I assess the fitting and extrapolative capabilities of two models (1) The (modified) Johnson–Mehl–Avrami–Kolmogorov (JMAK) model and (2) a generalized logistic (GL) model to fit observed experimental data by sampling the model(s) parameter posterior probability distribution functions (referred to as the _posteriors_) implied by an assumed gaussian error model on the experimental data. This is completed in two fashions (1) considered data sets in an independent manner and obtaining seperate parameter posteriors for each data set, and (2) proposing an empirical model that allows joint calibration across data sets. The notebooks used to develop this calibration are contained in [data_exploration](./data_exploration/) and [model_inference](./model_inference/).
+I assess the fitting and extrapolative capabilities of two models (1) The (modified) Johnson–Mehl–Avrami–Kolmogorov (JMAK) model and (2) a generalized logistic (GL) model to fit observed experimental data by sampling the model(s) parameter posterior probability distribution functions (referred to as the _posteriors_) implied by an assumed gaussian error model on the experimental data. This is completed in two fashions (1) considered data sets in an independent manner and obtain separate parameter posteriors for each data set, and (2) proposing an empirical model that allows joint calibration across data sets. The notebooks used to develop this calibration are contained in [data_exploration](./data_exploration/) and [model_inference](./model_inference/).
 
 ### Mathematical Models
 The selected models are quite similar though not identical. The like parameters in each model play similar roles.
@@ -58,7 +58,7 @@ The general structure for calibration adopted here assumes that we have a _param
 
 $X_i \sim \mathcal{N}(f(t_i,T_i;\theta),\sigma^2 \mathbf{I} + \Xi)$
 
-Where $\sigma^2$ is some model inadequecy and $\Xi = \text{diag}(\xi_i^2)$ are known experimental error. The joint distributions of the model errors is then the likelihood, which is related to the distribution of the paramter posteriors using [Bayes rule](https://en.wikipedia.org/wiki/Bayesian_statistics) as:
+Where $\sigma^2$ is some model inadequacy and $\Xi = \text{diag}(\xi_i^2)$ are known experimental error. The joint distributions of the model errors is then the likelihood, which is related to the distribution of the paramter posteriors using [Bayes rule](https://en.wikipedia.org/wiki/Bayesian_statistics) as:
 
 $p(\theta | \mathcal{D}) \propto \mathcal{L}(\mathcal{D} | \theta) p(\theta)$
 
@@ -68,25 +68,25 @@ Despite the simple specification of the problem, the specifics involved in estim
 It is useful to obtain good initial guesses model parameters by linearization and subsequent  parameter approximate estimation in the notebooks [arrhenius_process_esimation.ipynb](./data_exploration/arrhenius_process_estimation.ipynb).
 
 #### Initial Estimation Using Non-Linear Least Squares
-Bulding upon the results of [arrhenius_process_esimation.ipynb](./data_exploration/arrhenius_process_estimation.ipynb), I used a non-linear least squares approach to the estimate of model parameters prior to inference [initial_least_squares_comparison.ipynb](./data_exploration/initial_least_squares_comparison.ipynb).
+Building upon the results of [arrhenius_process_esimation.ipynb](./data_exploration/arrhenius_process_estimation.ipynb), I used a non-linear least squares approach to the estimate of model parameters prior to inference [initial_least_squares_comparison.ipynb](./data_exploration/initial_least_squares_comparison.ipynb).
 
-#### Seperate Inference Across Data Sets
+#### Separate Inference Across Data Sets
 In [recrystallization_inference.ipynb](./model_inference/recrystillization_inference.ipynb) I calibrated both the JMAK and GL models to each recrystallization fraction data set independently, using the [prior_estimates](data_exploration/initial_least_squares_comparison.ipynb) of model parameters.
 
 #### Latent Variables for Each Data Sets 
-Drawing conclusions about the correlation of various recrystallization fraction models observed  [here](./model_inference/recrystillization_inference.ipynb), I explore the potential of these relationships in [latent_variable_selection](./model_inference/latent_variable_selection.ipynb) for reducing model complexity. I propose and calibrate a hierarrchical model for recrsystillization across data sets in [hierarchical_recrystallization.ipynb](./model_inference/hierarchical_recystillization_inference.ipynb).
+Drawing conclusions about the correlation of various recrystallization fraction models observed  [here](./model_inference/recrystillization_inference.ipynb), I explore the potential of these relationships in [latent_variable_selection](./model_inference/latent_variable_selection.ipynb) for reducing model complexity. I propose and calibrate a hierarchical model for recrystallization across data sets in [hierarchical_recrystallization.ipynb](./model_inference/hierarchical_recystillization_inference.ipynb).
 
 ### Extending the recrystallization Fraction State Function Model(s) to Non-isothermal Conditions
-recrystallization experiments are performed isothermally, and the subsequent modeling assumes this condition. It is often the case that isothermal/constant conditions can NOT be relied upon. I extend the continous time isothermal JMAK and GL models to continous time non-isothermal analougues, inspired by discrete formulations in the literature (1-4) in [nonisothermal_modeling](./nonisothermal_modeling) and verify the formulation [numerically](./nonisothermal_modeling/non-isothermal_rx.ipynb). The basic assumption is that the rate of temperature change does not effect the recrystiliation process.
+recrystallization experiments are performed isothermally, and the subsequent modeling assumes this condition. It is often the case that isothermal/constant conditions can NOT be relied upon. I extend the continuous time isothermal JMAK and GL models to continuous time non-isothermal analogues, inspired by discrete formulations in the literature (1-4) in [nonisothermal_modeling](./nonisothermal_modeling) and verify the formulation [numerically](./nonisothermal_modeling/non-isothermal_rx.ipynb). The basic assumption is that the rate of temperature change does not effect the recrystallization process.
 
 ### Estimating Reduction in Material Hardness
-Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding frational reduction in yield strength. Using measured tungsten hardness data during recrystallization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](./model_inference/hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22}$ \%.
+Material yield strength is linearly related to hardness (Tabor's relationship). It's reasonable to expect that a reduction in material hardness will result in a corresponding  fractional reduction in yield strength. Using measured tungsten hardness data during recrystallization experiments, the expected reduction in material hardness is estimated in [hardness_rx_model.ipynb](./model_inference/hardness_rx_model.ipynb) and assumed to be less than $\mathbf{22}$\%.
 
 # Results
 Some results of this work are provided below. The full results are contained in each of the notebooks referenced in the above sections.
 
 ## Calibration Results
-The below figure shows visualizations of the JMAK and Generalized Logisitic models predictive distributions for recrystallization fraction calibrated to each of the five experimental data sets seperately [here](./model_inference/recrystillization_inference.ipynb), demonstrated for two temperatures. The dotted lines tracing the envelopes around the maximum likelihood predictions for either model (solid and dashed black lines) are 95% confidence intervals, based on the experimental error and model inadequecy discovered during calibration. There is little visual difference in the models ablities to predict the data once calibrated.
+The below figure shows visualizations of the JMAK and Generalized Logistic models predictive distributions for recrystallization fraction calibrated to each of the five experimental data sets separately [here](./model_inference/recrystillization_inference.ipynb), demonstrated for two temperatures. The dotted lines tracing the envelopes around the maximum likelihood predictions for either model (solid and dashed black lines) are 95% confidence intervals, based on the experimental error and model inadequacy discovered during calibration. There is little visual difference in the models abilities to predict the data once calibrated.
 
 ![Independent Posterior Predictions](.git_images/posterior_predictive_comparison.svg)
 
@@ -98,16 +98,16 @@ Sample marginal posteriors for the JMAK and GL models are demonstrated in the be
 
 _Marginal JMAK/GL model parameter posterior distributions obtained calibrating to data sets independently_
 
-The next figure visually compares the predictive distributions using the combined/hierarchical modeling approach (detailed [here](./model_inference/hierarchical_recystillization_inference.ipynb)) which calibrates a material model jointly to all experiemental data sets. This approach allows for _interpolation_ between data sets using _interpretable_ material parameters.
+The next figure visually compares the predictive distributions using the combined/hierarchical modeling approach (detailed [here](./model_inference/hierarchical_recystillization_inference.ipynb)) which calibrates a material model jointly to all experimental data sets. This approach allows for _interpolation_ between data sets using _interpretable_ material parameters.
 
 ![Joint Posterior Prediction](.git_images/posterior_predictive_comparison_hierarchical.svg)
 
 _Posterior predictive distribution visualization comparison of JMAK vs. Generalized Logistic models fitted jointly to the various data sets_
 
-There is little visual difference between model posterior predictions obtained by calibration seperately to the datasets _vs._ jointly. The below table compares the model inadquency estimated standard deviation when calibrating each data set individually vs. the combined model form. The model inadequecy increases somewhat in each scenario however the quality of the predictions is not impacted significantly and the combined model provides a straightforward way to interpolate between different tungstens, and extrapolate to tungstens with required properties.
+There is little visual difference between model posterior predictions obtained by calibration separately to the datasets _vs._ jointly. The below table compares the model inadequacy estimated standard deviation when calibrating each data set individually vs. the combined model form. The model inadequacy increases somewhat in each scenario however the quality of the predictions is not impacted significantly and the combined model provides a straightforward way to interpolate between different tungsten's, and extrapolate to tungsten's with required properties.
 
 
-**Independent vs. Combined Error Comparison**: Recrystallization model inadequecy standard deviation comparison across datasets
+**Independent vs. Combined Error Comparison**: Recrystallization model inadequacy standard deviation comparison across datasets
 |                                |   Individual |   Combined |
 |:-------------------------------|-------------:|-----------:|
 | Lopez et al. (2015) - HR       |       0.0269 |     0.0394 |
@@ -124,7 +124,7 @@ The latent variable $\ln{(\overline{k})}$ is very similar between the two models
 
 Finally, the mean, maximum likelihood, and standard deviation of the latent variables for each tungsten, and the latent parameters for the combined model are provided in the below tables. These can be used in conjunction with the model specified [here](./model_inference/hierarchical_recystillization_inference.ipynb) to predict the recrystallization fraction of a particular tungsten at some time and temperature.
 
-**JMAK**: Summary of Posterior Distributons  $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
+**JMAK**: Summary of Posterior Distributions  $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
 |                                |    ml |   mean |   std |     ml |   mean |   std |
 |:-------------------------------|------:|-------:|------:|-------:|-------:|------:|
 | Lopez et al. (2015) - HR       | 14.55 |  15.06 |  0.29 |  18.21 |  19.02 |  0.52 |
@@ -134,7 +134,7 @@ Finally, the mean, maximum likelihood, and standard deviation of the latent vari
 | Yu et al. (2017)               | 13.84 |  14.05 |  0.38 | -23.99 | -52.44 | 42.89 |
 
 
-**Generalized Logistic** : Summary of Posterior Distributons $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
+**Generalized Logistic** : Summary of Posterior Distributions $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
 |                                |    ml |   mean |   std |    ml |   mean |   std |
 |:-------------------------------|------:|-------:|------:|------:|-------:|------:|
 | Lopez et al. (2015) - HR       | 15.07 |  15.33 |  0.25 | 21.88 |  21.96 |  0.76 |
@@ -143,7 +143,7 @@ Finally, the mean, maximum likelihood, and standard deviation of the latent vari
 | Richou et al. (2020) - Batch B | 19.12 |  21.54 |  0.83 | 25.99 |  26.31 |  0.97 |
 | Yu et al. (2017)               | 13.86 |  14.09 |  0.38 | -4.69 | -55.89 | 41.32 |
 
-**JMAK Parameters**: Summary of Posterior Distributons
+**JMAK Parameters**: Summary of Posterior Distributions
 |          |        ml |      mean |      std |
 |:---------|----------:|----------:|---------:|
 | $c_{11}$ |   -17.152 |   -17.056 |    0.188 |
@@ -158,7 +158,7 @@ Finally, the mean, maximum likelihood, and standard deviation of the latent vari
 | $c_{25}$ |     0.065 |     0.071 |    0.003 |
 
 
-**Generalized Logistic Parameters**: Summary of Posterior Distributons
+**Generalized Logistic Parameters**: Summary of Posterior Distributions
 |          |        ml |      mean |    std |
 |:---------|----------:|----------:|-------:|
 | $c_{11}$ |   -17.65  |   -17.212 |  0.159 |
