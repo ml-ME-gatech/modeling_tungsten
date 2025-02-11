@@ -30,13 +30,15 @@ _FILE_TO_LABEL = {'rf_data/alfonso_data/highly_rolled.csv': 'Lopez et al. (2015)
                 'rf_data/alfonso_data/moderate_roll.csv': 'Lopez et al. (2015) - MR',
                 'rf_data/richou_data/batch_a_data.csv': 'Richou et al. (2020) - Batch A',
                 'rf_data/richou_data/batch_b_data.csv': 'Richou et al. (2020) - Batch B',
-                'rf_data/yu_data/data.csv': 'Yu et al. (2017)'}
+                'rf_data/yu_data/data.csv': 'Yu et al. (2017)',
+                'rf_data/shah_data/data.csv': 'Shah et al. (2021)'}
 
 _FILE_TO_MULTIPLIER = {'rf_data/alfonso_data/highly_rolled.csv': 3600.,
                       'rf_data/alfonso_data/moderate_roll.csv': 3600.,
                        'rf_data/richou_data/batch_a_data.csv': 1.0,
                        'rf_data/richou_data/batch_b_data.csv': 1.0,
-                        'rf_data/yu_data/data.csv': 3600}
+                        'rf_data/yu_data/data.csv': 3600,
+                        'rf_data/shah_data/data.csv': 1.0}
 
 _FILE_TO_LABEL = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_LABEL.items()}
 _FILE_TO_MULTIPLIER = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_MULTIPLIER.items()}
@@ -162,7 +164,7 @@ def get_loglinear_arrhenius_parameter_bounds_from_file(plabel: str,
         try:
             file = _file_key(file_)
         except FileNotFoundError as fe:
-            raise KeyError(f'File {file_} is not in file_label_label and could not be resolved to a path.')
+            raise KeyError(f'File {file_} is not in file_to_label and could not be resolved to a path.')
     else:
         file = file_    
     
@@ -218,10 +220,15 @@ def jmak_fit_model_setup(file: str,
     """
     neccssary setup for fitting the JMAK model
     """
-    bounds_tinc,p0_tinc = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file,**kwargs)
-    bounds_b,p0_b = get_loglinear_arrhenius_parameter_bounds_from_file('log_b',file, **kwargs)
-    bounds = np.concatenate([bounds_n,bounds_b,bounds_tinc],axis = 0)
-    p0 = np.concatenate([p0_b,p0_tinc])
+    try:
+        bounds_tinc,p0_tinc = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file,**kwargs)
+        bounds_b,p0_b = get_loglinear_arrhenius_parameter_bounds_from_file('log_b',file, **kwargs)
+        bounds = np.concatenate([bounds_n,bounds_b,bounds_tinc],axis = 0)
+        p0 = np.concatenate([p0_b,p0_tinc])
+    except FileNotFoundError as fe:
+        warnings.warn(str(fe))
+        bounds,p0 = None,None
+    
     return *read_prepare_data(file, mult = mult,exclude_index = exclude_index),bounds,p0
 
 def gl_fit_model_setup(file: str,
@@ -233,10 +240,15 @@ def gl_fit_model_setup(file: str,
     """
     neccssary setup for fitting the GL model
     """
-    bounds_B,p0_B = get_loglinear_arrhenius_parameter_bounds_from_file('log_B',file,**kwargs)
-    bounds_M,p0_M = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file, **kwargs)
-    bounds = np.concatenate([bounds_nu,bounds_B,bounds_M],axis = 0)
-    p0 = np.concatenate([p0_B,p0_M])
+    try:
+        bounds_B,p0_B = get_loglinear_arrhenius_parameter_bounds_from_file('log_B',file,**kwargs)
+        bounds_M,p0_M = get_loglinear_arrhenius_parameter_bounds_from_file('log_tinc',file, **kwargs)
+        bounds = np.concatenate([bounds_nu,bounds_B,bounds_M],axis = 0)
+        p0 = np.concatenate([p0_B,p0_M])
+    except FileNotFoundError as fe:
+        warnings.warn(str(fe))
+        bounds,p0 = None,None
+    
     return *read_prepare_data(file,mult = mult,exclude_index = exclude_index),bounds,p0
 
 
