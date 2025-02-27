@@ -58,7 +58,7 @@ The general structure for calibration adopted here assumes that we have a _param
 
 $X_i \sim \mathcal{N}(f(t_i,T_i;\theta),\sigma^2 \mathbf{I} + \Xi)$
 
-Where $\sigma^2$ is some model inadequacy and $\Xi = \text{diag}(\xi_i^2)$ are known experimental error. The joint distributions of the model errors is then the likelihood, which is related to the distribution of the paramter posteriors using [Bayes rule](https://en.wikipedia.org/wiki/Bayesian_statistics) as:
+Where $\sigma^2$ is some model inadequacy and $\Xi = \text{diag}(\xi_i^2)$ are known experimental error. The joint distributions of the model errors is then the likelihood, which is related to the distribution of the parameter posteriors using [Bayes rule](https://en.wikipedia.org/wiki/Bayesian_statistics) as:
 
 $p(\theta | \mathcal{D}) \propto \mathcal{L}(\mathcal{D} | \theta) p(\theta)$
 
@@ -88,89 +88,90 @@ Some results of this work are provided below. The full results are contained in 
 ## Calibration Results
 The below figure shows visualizations of the JMAK and Generalized Logistic models predictive distributions for recrystallization fraction calibrated to each of the five experimental data sets separately [here](./model_inference/recrystillization_inference.ipynb), demonstrated for two temperatures. The dotted lines tracing the envelopes around the maximum likelihood predictions for either model (solid and dashed black lines) are 95% confidence intervals, based on the experimental error and model inadequacy discovered during calibration. There is little visual difference in the models abilities to predict the data once calibrated.
 
-![Independent Posterior Predictions](.git_images/posterior_predictive_comparison.svg)
+![Independent Posterior Predictions](.git_images/posterior_predictive_comparison_truncated_normal.svg)
 
 _Posterior predictive distribution visualization comparison of JMAK vs. Generalized Logistic models fitted independently to various data sets_
 
 Sample marginal posteriors for the JMAK and GL models are demonstrated in the below figure (using kernel density estimation). Similar parameters play similar roles between the two models, though there appears to be more resolution between exponent ($n$ and $\nu$ for the JMAK and GL models respectively) for the GL model than the JMAK.
 
-![recrystallization Fraction Marginal Posterior(s)](.git_images/posterior_kde_comparison.svg)
+![recrystallization Fraction Marginal Posterior(s)](.git_images/posterior_kde_comparison_truncated_normal.svg)
 
 _Marginal JMAK/GL model parameter posterior distributions obtained calibrating to data sets independently_
 
 The next figure visually compares the predictive distributions using the combined/hierarchical modeling approach (detailed [here](./model_inference/hierarchical_recystillization_inference.ipynb)) which calibrates a material model jointly to all experimental data sets. This approach allows for _interpolation_ between data sets using _interpretable_ material parameters.
 
-![Joint Posterior Prediction](.git_images/posterior_predictive_comparison_hierarchical.svg)
+![Joint Posterior Prediction](.git_images/posterior_predictive_comparison_hierarchical_truncated_normal.svg)
 
 _Posterior predictive distribution visualization comparison of JMAK vs. Generalized Logistic models fitted jointly to the various data sets_
 
 There is little visual difference between model posterior predictions obtained by calibration separately to the datasets _vs._ jointly. The below table compares the model inadequacy estimated standard deviation when calibrating each data set individually vs. the combined model form. The model inadequacy increases somewhat in each scenario however the quality of the predictions is not impacted significantly and the combined model provides a straightforward way to interpolate between different tungsten's, and extrapolate to tungsten's with required properties.
 
-
-**Independent vs. Combined Error Comparison**: Recrystallization model inadequacy standard deviation comparison across datasets
-|                                |   Individual |   Combined |
+**Independent vs. Combined Error Comparison**:Recrystallization model inadequacy standard deviation comparison across datasets
+|                                |   individual |   combined |
 |:-------------------------------|-------------:|-----------:|
-| Lopez et al. (2015) - HR       |       0.0269 |     0.0394 |
-| Lopez et al. (2015) - MR       |       0.0763 |     0.0951 |
-| Richou et al. (2020) - Batch A |       0.0166 |     0.0442 |
-| Richou et al. (2020) - Batch B |       0.0117 |     0.0616 |
-| Yu et al. (2017)               |       0.0912 |     0.0935 |
+| Lopez et al. (2015) - HR       |       0.0287 |     0.0323 |
+| Lopez et al. (2015) - MR       |       0.0813 |     0.0844 |
+| Richou et al. (2020) - Batch A |       0.0216 |     0.0581 |
+| Richou et al. (2020) - Batch B |       0.021  |     0.0879 |
+| Yu et al. (2017)               |       0.1022 |     0.1053 |
 
 Posteriors of the latent variables $\ln{(\overline{k})}$, $\ln{(\overline{t})}$ which indicate the mean recrystallization and incubation times of the particular tungsten, obtained during inference of the hierarchical model, are shown in the below figure:
 
-![Marginal posterior latent variables](.git_images/latent_variable_posterior_hierarchical.svg)
+![Marginal posterior latent variables](.git_images/latent_variable_posterior_hierarchical_truncated_normal.svg)
 
 The latent variable $\ln{(\overline{k})}$ is very similar between the two models, and effectively demonstrates for which tungsten recrystallization proceeds most quickly (Yu _et al._) vs. for which tungsten the recrystallization proceeds least quickly (Lopez _et al._ MR).
 
-Finally, the mean, maximum likelihood, and standard deviation of the latent variables for each tungsten, and the latent parameters for the combined model are provided in the below tables. These can be used in conjunction with the model specified [here](./model_inference/hierarchical_recystillization_inference.ipynb) to predict the recrystallization fraction of a particular tungsten at some time and temperature.
+Finally, the mean, maximum likelihood, and standard deviation of the latent variables for each tungsten, and the latent parameters for the combined model are provided in the below tables. These can be used in conjunction with the model specified [here](./model_inference/hierarchical_recystillization_inference_truncated_normal.ipynb) to predict the recrystallization fraction of a particular tungsten at some time and temperature.
 
 **JMAK**: Summary of Posterior Distributions  $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
-|                                |    ml |   mean |   std |     ml |   mean |   std |
-|:-------------------------------|------:|-------:|------:|-------:|-------:|------:|
-| Lopez et al. (2015) - HR       | 14.55 |  15.06 |  0.29 |  18.21 |  19.02 |  0.52 |
-| Lopez et al. (2015) - MR       | 28.57 |  27.9  |  0.18 |   6.86 |  -8.35 | 16.42 |
-| Richou et al. (2020) - Batch A | 22.93 |  25.58 |  0.98 |  20.59 |  22.02 |  0.63 |
-| Richou et al. (2020) - Batch B | 19.11 |  21.45 |  0.87 |  21.87 |  23.49 |  0.65 |
-| Yu et al. (2017)               | 13.84 |  14.05 |  0.38 | -23.99 | -52.44 | 42.89 |
-
+|                                |    ml |   mean |   std |      ml |    mean |   std |
+|:-------------------------------|------:|-------:|------:|--------:|--------:|------:|
+| Lopez et al. (2015) - HR       | 16.05 |  15.65 |  0.26 |   18.32 |   19.18 |  0.53 |
+| Lopez et al. (2015) - MR       | 28.43 |  28.01 |  0.16 |   11.15 |   -8.94 | 17.12 |
+| Richou et al. (2020) - Batch A | 27.56 |  26.39 |  0.93 |   20.32 |   21.37 |  0.58 |
+| Richou et al. (2020) - Batch B | 20.62 |  22.1  |  0.8  |   21.39 |   22.57 |  0.59 |
+| Yu et al. (2017)               | 16.48 |  15.55 |  0.38 |   16.28 |  -42.96 | 47.15 |
+| Shah et al. (2021)             | 16.8  |  16.28 |  0.51 | -125.43 |  -190.3 | 92.28 |
 
 **Generalized Logistic** : Summary of Posterior Distributions $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
-|                                |    ml |   mean |   std |    ml |   mean |   std |
-|:-------------------------------|------:|-------:|------:|------:|-------:|------:|
-| Lopez et al. (2015) - HR       | 15.07 |  15.33 |  0.25 | 21.88 |  21.96 |  0.76 |
-| Lopez et al. (2015) - MR       | 28.68 |  27.88 |  0.2  | -0.91 | -13.71 | 17.57 |
-| Richou et al. (2020) - Batch A | 24.23 |  25.85 |  0.86 | 24.85 |  24.86 |  0.93 |
-| Richou et al. (2020) - Batch B | 19.12 |  21.54 |  0.83 | 25.99 |  26.31 |  0.97 |
-| Yu et al. (2017)               | 13.86 |  14.09 |  0.38 | -4.69 | -55.89 | 41.32 |
+|                                |    ml |   mean |   std |    ml   |   mean |   std |
+|:-------------------------------|------:|-------:|------:|--------:|-------:|------:|
+| Lopez et al. (2015) - HR       | 16.26 |  16.29 |  0.24 |   15.32 |   17.2 |  0.79 |
+| Lopez et al. (2015) - MR       | 28.24 |  28.09 |  0.19 |  -16.51 | -14.92 | 17.29 |
+| Richou et al. (2020) - Batch A | 26.85 |  26.33 |  0.87 |   17.42 |  19.95 |  0.97 |
+| Richou et al. (2020) - Batch B | 20.7  |  22.15 |  0.79 |   18.58 |   21.3 |  1.01 |
+| Yu et al. (2017)               | 16.8  |  15.74 |  0.38 | -116.27 | -55.36 | 41.88 |
+| Shah et al. (2021)             | 17.48 |  17.96 |  0.49 | -126.85 | -86.77 | 54.91 |
 
-**JMAK Parameters**: Summary of Posterior Distributions
-|          |        ml |      mean |      std |
-|:---------|----------:|----------:|---------:|
-| $c_{11}$ |   -17.152 |   -17.056 |    0.188 |
-| $c_{12}$ |   -29.777 |   -31.349 |    0.789 |
-| $c_{13}$ | 15853.5   | 16159.5   |  246.817 |
-| $c_{14}$ | 33071.2   | 34533.6   | 1075.83  |
-| $c_{15}$ |     0.766 |     0.508 |    0.056 |
-| $c_{21}$ |     1.728 |     1.717 |    0.008 |
-| $c_{22}$ |     0.323 |     0.312 |    0.017 |
-| $c_{23}$ | -2937.49  | -2949.2   |   10.962 |
-| $c_{24}$ |   939.157 |   932.558 |   22.73  |
-| $c_{25}$ |     0.065 |     0.071 |    0.003 |
+**JMAK Parameters**: Summary of Posterior Distributons
+|          |        ml |      mean |     std |
+|:---------|----------:|----------:|--------:|
+| $c_{11}$ |   -16.235 |   -16.599 |   0.201 |
+| $c_{12}$ |   -29.765 |   -31.024 |   0.518 |
+| $c_{13}$ | 16880.4   | 16765.5   | 258.846 |
+| $c_{14}$ | 32959.9   | 33509.4   | 703.807 |
+| $c_{15}$ |     0.008 |     0.549 |   0.09  |
+| $c_{21}$ |     1.719 |     1.726 |   0.009 |
+| $c_{22}$ |     0.453 |     0.448 |   0.011 |
+| $c_{23}$ | -3011.52  | -3006.54  |  11.347 |
+| $c_{24}$ |   760.279 |   766.274 |  14.562 |
+| $c_{25}$ |     0.075 |     0.056 |   0.004 |
 
 
-**Generalized Logistic Parameters**: Summary of Posterior Distributions
+**Generalized Logistic Parameters**: Summary of Posterior Distributons
 |          |        ml |      mean |    std |
 |:---------|----------:|----------:|-------:|
-| $c_{11}$ |   -17.65  |   -17.212 |  0.159 |
-| $c_{12}$ |   -30.203 |   -30.308 |  0.636 |
-| $c_{13}$ | 17819.1   | 17819.1   |  0     |
-| $c_{14}$ | 29758.5   | 29758.5   |  0     |
-| $c_{15}$ |     0.231 |     0.226 |  0.009 |
-| $c_{21}$ |     1.79  |     1.764 |  0.007 |
-| $c_{22}$ |     0.257 |     0.267 |  0.017 |
-| $c_{23}$ | -3009.82  | -3011.87  |  2.593 |
-| $c_{24}$ |   973.703 |   961.021 | 23.249 |
-| $c_{25}$ |    -0.005 |    -0.004 |  0     |
+| $c_{11}$ |   -16.154 |   -16.078 |  0.191 |
+| $c_{12}$ |   -27.037 |   -28.842 |  0.681 |
+| $c_{13}$ | 17170.9   | 17170.9   |  0.006 |
+| $c_{14}$ | 33640.4   | 33640.4   |  0     |
+| $c_{15}$ |     0.572 |     0.28  |  0.013 |
+| $c_{21}$ |     1.754 |     1.746 |  0.008 |
+| $c_{22}$ |     0.349 |     0.309 |  0.016 |
+| $c_{23}$ | -3023.18  | -3024.56  |  3.171 |
+| $c_{24}$ |   889.083 |   929.796 | 22.182 |
+| $c_{25}$ |    -0.016 |    -0.005 |  0.001 |
+
 
 ## Data Sources and Work Cited
 I would like to acknowledge the exceptional scientific work and considerable effort in obtaining these measurements by the authors of the studies from where I obtained the recrystallization data:
