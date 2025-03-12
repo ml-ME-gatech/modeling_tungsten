@@ -5,18 +5,22 @@ from pathlib import PurePath
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator
-
+import math
 import sys
 if 'win' in sys.platform.lower():
     from pathlib import WindowsPath as Path
 else:
     from pathlib import PosixPath as Path
 
-from recrystallization.common_util import LogLinearArrheniusModelFunc,LogLinearArrhenius,jmak_function
+from recrystallization.common_util import LogLinearArrheniusModelFunc,LogLinearArrhenius,jmak_function,get_model_params
 from recrystallization import common_util as rx_common_util
 from engineering_models import common_util as em_common_util
 from abc import ABC,abstractmethod
 import pandas as pd
+from scipy.integrate import quad
+from scipy.optimize import bisect
+from scipy.integrate import solve_ivp
+from scipy.interpolate import interp1d
 
 _EXT_PARENT_DIR = Path(__file__).resolve().parent 
 _ENGINEERING_MODEL_PATH = _EXT_PARENT_DIR.joinpath('engineering_models/.model')
@@ -57,8 +61,124 @@ def _reconcile_rx_model_shape(t: np.ndarray | float,
         raise TypeError('Unsupported type for t and/or T')
     return t,T
 
-def read_jmak_model_inference(file: str | PurePath,
-                              estimate = 'ml') -> LogLinearArrheniusModelFunc:
+def _default_ode_kwargs(**kwargs):
+    """ 
+    favor precision over speed.
+    """
+
+    default_kwargs = {'method':'DOP853',
+                      'rtol':1e-12,
+                      'atol':1e-12}
+    
+    default_kwargs.update(kwargs)
+    return default_kwargs
+
+class NonisothermalJMAK:
+
+    def __init__(self,model: LogLinearArrheniusModelFunc):
+    
+        self.a1,self.B1,self.a2,self.B2,self.n = get_model_params(model)
+        self.model = model
+
+    def effective_rate(self,t: float,T: Callable) -> float:
+        
+        def bfunc(Temp: float):
+            return math.exp(self.a1 + self.B1/Temp)
+        
+        integral = quad(lambda x: bfunc(T(x)),0,t)[0]
+        return integral/t
+    
+    def effective_incubation_time(self,t1: float, t2: float, T: Callable) -> float:
+        
+        def tinc(Temp: float):
+            return math.exp(self.a2 + self.B2/Temp)
+        
+        def rho_func(tt: float):
+            return quad(lambda x: 1./tinc(T(x)),0,tt)[0] - 1.   
+        
+        return bisect(rho_func,t1,t2)
+    
+    def get_rx_time(self,X: float, temperature: np.ndarray) -> np.ndarray:
+        
+        t_inc = np.exp(self.a2 + self.B2/temperature)
+        b = np.exp(self.a1 + self.B1/temperature)
+        return 1.0/b*np.log(1./(1. - X))**(1/self.n) + t_inc  
+
+    def get_rx_temperature(self,X: float, time: np.ndarray,
+                            temp_lim = [873.15, 2000]) -> np.ndarray:
+
+        
+        temperature = np.zeros_like(time)
+        for i in range(time.shape[0]):
+            def _solve_temperature(temp: float):
+                t = time[i] - np.exp(self.a2 + self.B2/temp)
+                if t < 0:
+                    return 1e6
+
+                w = 1./t*math.log(1./(1.-X))**(1/self.n)
+                T = self.B1/(math.log(w) - self.a1)
+                return T - temp
+
+            temperature[i] = bisect(_solve_temperature,temp_lim[0],temp_lim[1])
+        
+        return temperature
+
+    def nonisothermal_rx_fraction(self,t: np.ndarray,
+                                       T: Callable,
+                                       **solver_kwargs) -> np.ndarray:
+
+        def b(Temp: float): 
+            return math.exp(self.a1 + self.B1/Temp)
+        
+        start_t = self.effective_incubation_time(t[0],t[-1],T)
+
+        def integrand(tt: float, _ ):
+            TT = T(tt + start_t)
+            BB = b(TT)
+            return BB
+        
+        Y = np.zeros_like(t)
+        index = t >start_t
+        solver_kwargs = _default_ode_kwargs(**solver_kwargs)
+        Z = solve_ivp(integrand,(t[0],t[-1]),np.array([1e-18]),
+                            t_eval = (t[index] - start_t),**solver_kwargs)['y'].squeeze()**self.n  
+
+        Y[index] = 1. - np.exp(-Z)
+        return Y
+    
+    def isothermal_rx_fraction(self, t: np.ndarray | float, T: float | np.ndarray) -> np.ndarray:
+        
+        t_,T_ = _reconcile_rx_model_shape(t,T)
+        return self.model.predict(np.array([t_,T_]).T).squeeze()
+    
+    def __call__(self, t: np.ndarray | float,
+                       T: Callable | float,
+                       **solver_kwargs) -> Callable:
+        
+        if callable(T) :
+            assert(isinstance(t,np.ndarray)), "Time must be an array if temperature is a function"
+            return self.nonisothermal_rx_fraction(t,T, **solver_kwargs)
+        elif isinstance(T,float):
+            return self.isothermal_rx_fraction(t,T)
+        elif isinstance(T,np.ndarray):
+            if isinstance(t,np.ndarray):
+                assert t.shape == T.shape, f"Invalid shape: {t.shape} must be same as {T.shape}"
+            
+            return self.isothermal_rx_fraction(t,T)
+        else:
+            raise TypeError('Unsupported type for T')
+
+
+def structural_model_to_jmak_params(latent_param: np.ndarray,
+                                    latent_var: np.ndarray): 
+    
+    a1,B1,n = latent_var[0]*latent_param[0:3,1] + latent_param[0:3,0]
+    a2,B2 = latent_var[1]*latent_param[3:,1] + latent_param[3:,0]
+
+    return a1,B1,a2,B2,n
+
+def read_jmak_model_inference(file_: str | PurePath,
+                              estimate = 'ml') -> NonisothermalJMAK:
     """
     Helper function to read a callable JMAK model from an inference file containing parameters.
 
@@ -70,19 +190,27 @@ def read_jmak_model_inference(file: str | PurePath,
         Estimate to use for the parameters. Default is 'ml' for maximum likelihood.
     """
 
-    inf_summary = pd.read_csv(file,index_col = 0)
-    model_params = ['a1','B1','a2','B2','n','sigma'] 
-    a1,B1,a2,B2,n,_ = inf_summary.loc[model_params,estimate].to_numpy()
-    
-    def wrapped_jmak_model(t: np.ndarray | float, T: np.ndarray | float) -> np.ndarray:
-        
-        t_,T_ = _reconcile_rx_model_shape(t,T)
-        b = LogLinearArrhenius(np.array([a1,B1]))
-        tinc = LogLinearArrhenius(np.array([a2,B2]))
-        
-        return jmak_function(t_,b(T_),tinc(T_),n)
+    file = Path(file_).resolve()
 
-    return wrapped_jmak_model
+    if '.csv' == file.suffix:
+        inf_summary = pd.read_csv(file,index_col = 0)
+        model_params = ['a1','B1','a2','B2','n','sigma'] 
+        a1,B1,a2,B2,n,_ = inf_summary.loc[model_params,estimate].to_numpy()
+    elif '.pkl' == file.suffix:
+        if estimate =='ml':
+            estimate = 'map'
+        with open(file,'rb') as f:
+            inf_summary = pickle.load(f)[estimate]
+            a1,B1,a2,B2,n = structural_model_to_jmak_params(inf_summary['latent_param'].reshape([5,2]),
+                                                            inf_summary['latent_variables'])
+    else:
+        raise ValueError('Unsupported file type: must be either .csv or .pkl')
+    
+    b = LogLinearArrhenius(np.array([a1,B1]))
+    tinc = LogLinearArrhenius(np.array([a2,B2]))
+    return NonisothermalJMAK(
+        LogLinearArrheniusModelFunc(jmak_function,n = n,ap1 = b,ap2 = tinc)
+        )
 
 def is_sklearn(model: Any): 
     """
@@ -409,7 +537,8 @@ def get_nogami_material_property(material: str):
 def get_nogami_material_recrystallization_property(material: str,
                                                    rx_material: str,
                                                    delta_uts: float,
-                                                   delta_te: float):
+                                                   delta_te: float,
+                                                   rx_model =None):
     
     """ 
     Function to get the material property from the Nogami database with an accompying recrystallization
@@ -428,7 +557,7 @@ def get_nogami_material_recrystallization_property(material: str,
     """
 
     emm = get_nogami_material_property(material)
-    rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_{rx_material}_params.csv'))
+    rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_{rx_material}_trunc_normal_params.csv')) if rx_model is None else rx_model
     uts = RecrystallizedUltimateTensileStress(emm.ultimate_tensile_stress,
                                               LoadableMaterialProperty(material_property= rx_model),
                                               delta_uts)
@@ -448,12 +577,17 @@ def get_nogami_material_recrystallization_property(material: str,
 
 def main():
 
-    emm = get_nogami_material_recrystallization_property('K-W3%Re Plate (H)',
-                                                         'Lopez et al. (2015) - MR',
-                                                         293.489,-30.2196)
+    #rx_model =  read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_Lopez et al. (2015) - MR_trunc_normal_params.csv'))
+    rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath('K-doped 3%Re W_tpa_map_trunc_normal.pkl'))
+    T = 1200.0 + 273.15
+    t = np.linspace(0,100*3600,4)
+    rx = rx_model(t,T)
     
-    uts = emm.ultimate_tensile_stress(8760*60*60*0.001,np.linspace(600,1200,10))
-    print(uts)
+    T = lambda x: 1/3600*x + 1150 + 273.15
+    t = np.linspace(0,100*3600,4)
+    rx = rx_model(t,T)
+    b = rx_model.effective_rate(t[-1],T)
+
 
 if __name__ == "__main__":
     main()
