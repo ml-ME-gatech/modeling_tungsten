@@ -557,7 +557,11 @@ def get_nogami_material_recrystallization_property(material: str,
     """
 
     emm = get_nogami_material_property(material)
-    rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_{rx_material}_trunc_normal_params.csv')) if rx_model is None else rx_model
+    try:
+        rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_{rx_material}_trunc_normal_params.csv')) if rx_model is None else rx_model
+    except FileNotFoundError:
+        rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'{rx_material}_tpa_map_trunc_normal.pkl')) if rx_model is None else rx_model
+    
     uts = RecrystallizedUltimateTensileStress(emm.ultimate_tensile_stress,
                                               LoadableMaterialProperty(material_property= rx_model),
                                               delta_uts)
