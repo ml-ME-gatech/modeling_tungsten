@@ -123,7 +123,7 @@ The latent variable $\ln{(\overline{k})}$ is very similar between the two models
 
 Finally, the mean, maximum likelihood, and standard deviation of the latent variables for each tungsten, and the latent parameters for the combined model are provided in the below tables. These can be used in conjunction with the model specified [here](./model_inference/hierarchical_recystillization_inference_truncated_normal.ipynb) to predict the recrystallization fraction of a particular tungsten at some time and temperature.
 
-**JMAK**: Summary of Posterior Distributions  $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
+**JMAK**: Summary of Posterior Distributions  $\ln{(\tilde{k})}$ -- $\ln{(\\tilde{t})}$
 |                                |    ml |   mean |   std |      ml |    mean |   std |
 |:-------------------------------|------:|-------:|------:|--------:|--------:|------:|
 | Lopez et al. (2015) - HR       | 16.05 |  15.65 |  0.26 |   18.32 |   19.18 |  0.53 |
@@ -133,7 +133,7 @@ Finally, the mean, maximum likelihood, and standard deviation of the latent vari
 | Yu et al. (2017)               | 16.48 |  15.55 |  0.38 |   16.28 |  -42.96 | 47.15 |
 | Shah et al. (2021)             | 16.8  |  16.28 |  0.51 | -125.43 |  -190.3 | 92.28 |
 
-**Generalized Logistic** : Summary of Posterior Distributions $\ln{(\overline{k})}$ -- $\ln{(\overline{t})}$
+**Generalized Logistic** : Summary of Posterior Distributions $\ln{(\tilde{k})}$ -- $\ln{(\tilde{t})}$
 |                                |    ml |   mean |   std |    ml   |   mean |   std |
 |:-------------------------------|------:|-------:|------:|--------:|-------:|------:|
 | Lopez et al. (2015) - HR       | 16.26 |  16.29 |  0.24 |   15.32 |   17.2 |  0.79 |
