@@ -33,6 +33,10 @@ _FILE_TO_LABEL = {'rf_data/alfonso_data/highly_rolled.csv': 'Lopez et al. (2015)
                 'rf_data/yu_data/data.csv': 'Yu et al. (2017)',
                 'rf_data/shah_data/data.csv': 'Shah et al. (2021)'}
 
+_EXT_FILE_TO_LABEL = {r'rf_data/tschudia_data/K-doped 3%Re Wrx_frac.csv': r'K-doped 3%Re W',
+                      r'rf_data/tschudia_data/K-doped Wrx_frac.csv': r'K-doped W', 
+                      r'rf_data/tschudia_data/Pure Wrx_frac.csv': r'Pure W'}
+
 _FILE_TO_MULTIPLIER = {'rf_data/alfonso_data/highly_rolled.csv': 3600.,
                       'rf_data/alfonso_data/moderate_roll.csv': 3600.,
                        'rf_data/richou_data/batch_a_data.csv': 1.0,
@@ -40,8 +44,16 @@ _FILE_TO_MULTIPLIER = {'rf_data/alfonso_data/highly_rolled.csv': 3600.,
                         'rf_data/yu_data/data.csv': 3600,
                         'rf_data/shah_data/data.csv': 1.0}
 
+_EXT_FILE_TO_MULTIPLIER = {r'rf_data/tschudia_data/K-doped 3%Re Wrx_frac.csv': 1.0,
+                           r'rf_data/tschudia_data/K-doped Wrx_frac.csv': 1.0, 
+                       r'rf_data/tschudia_data/Pure Wrx_frac.csv': 1.0}
+
+
 _FILE_TO_LABEL = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_LABEL.items()}
 _FILE_TO_MULTIPLIER = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _FILE_TO_MULTIPLIER.items()}
+_EXT_FILE_TO_LABEL = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _EXT_FILE_TO_LABEL.items()}
+_EXT_FILE_TO_MULTIPLIER = {str(_CURR_DIR.joinpath(k).resolve()):v for k,v in _EXT_FILE_TO_MULTIPLIER.items()}
+
 
 #Connstant Used in Integration of Arrhenius Models
 _EULER_MASCHERONI = 0.57721566490153286060651209008240243104215933593992
@@ -144,10 +156,23 @@ def _file_key(file: Any):
         raise FileNotFoundError(f'File {_file} does not exist')
 
 def get_data_label(file: Any):
-    return _FILE_TO_LABEL[_file_key(file)]
-
+    try:
+        return _FILE_TO_LABEL[_file_key(file)]
+    except KeyError as ke:
+        try:
+            return _EXT_FILE_TO_LABEL[_file_key(file)]
+        except KeyError as ke:
+            raise KeyError(f'File {file} is not in file_to_label or ext_file_to_label')
+        
 def get_data_multiplier(file: Any):
-    return _FILE_TO_MULTIPLIER[_file_key(file)]
+    try:
+        return _FILE_TO_MULTIPLIER[_file_key(file)]
+    except KeyError as ke:
+        try:
+            return _EXT_FILE_TO_MULTIPLIER[_file_key(file)]
+        except KeyError as ke:
+            raise KeyError(f'File {file} is not in file_to_multiplier or ext_file_to_multiplier')
+
 
 def get_loglinear_arrhenius_parameter_bounds_from_file(plabel: str,
                                              file_: str,
