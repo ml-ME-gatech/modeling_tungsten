@@ -59,6 +59,7 @@ class ProjectPaths:
                  'SCRATCH': '.scratch',
                 'STRUCTURAL_DATA': 'data/structural_data',
                 'CONDUCTIVITY_DATA': 'data/conductivity_data',
+                'CREEP_DATA': 'data/creep_data',
                 'MODELING': 'modeling',
                 'DATA_EXPLORATION': 'data_exploration',
                 'GIT_IMAGES': '.git_images',
@@ -666,73 +667,6 @@ class ParamterizedLinearModel:
             raise ValueError("Optimization failed")
         
 
-class LarsonMiller:
-
-    """ 
-    Fit the model:
-    S_t = sum([beta_i x^i for i in range(deg+1)])
-    x = T*(C + log(t))
-    """
-
-    def __init__(self):
-        self.C,self.deg = None,None
-
-    def lmp(self,t: np.ndarray,T: np.ndarray,C: float) -> np.ndarray:
-        return T*(C + np.log(t))
-
-    def _feature_transform(self,t: np.ndarray,T: np.ndarray, C, deg: int)-> np.ndarray:
-        x = self.lmp(t,T,C)
-        return np.concatenate([x[:,np.newaxis]**i for i in range(deg+1)],axis = 1)
-
-
-    def refit_model(self,t: np.ndarray,
-                         T: np.ndarray,
-                         stress: np.ndarray):
-        
-        self.ols_results= OLS(stress,self._feature_transform(t,T,self.C,self.deg)).fit()
-        return self
-    
-    def coeff(self):
-        return self.ols_results.params
-
-    def make_improved_model(self,v: float):
-
-        new_model = copy.deepcopy(self)
-        new_model.C *= (1+ v)
-        new_model.ols_results.params[0] *= (1+v) 
-        return new_model
-    
-    def fit(self,t: np.ndarray,
-                 T: np.ndarray,
-                 stress: np.ndarray, 
-                 deg = 1,
-                 C_bounds = (1,1e3),
-                 **opt_kwargs):
-
-        
-        self.deg = deg
-
-        def _objective_function(C: np.ndarray):
-            X = self._feature_transform(t,T,C,deg)
-            result  = OLS(stress,X).fit()
-            stress_hat = result.predict(X)
-            return np.linalg.norm(stress - stress_hat)
-
-        opt_result = minimize_scalar(_objective_function,bracket = C_bounds,
-                                bounds = C_bounds,**opt_kwargs)
-
-        if opt_result.success:
-            self.C = opt_result.x
-            X = self._feature_transform(t,T,self.C,deg)
-            self.ols_results = OLS(stress,X).fit()
-        else:
-            raise RuntimeError('failed to fit creep model')
-
-        return self
-
-    def predict(self,t: np.ndarray,T: np.ndarray):      
-        X = self._feature_transform(t,T,self.C,self.deg)
-        return self.ols_results.predict(X)
 
 
 def markdown_table_from_df(df: pd.DataFrame,
