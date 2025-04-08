@@ -22,7 +22,7 @@ from scipy.optimize import bisect
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 
-_EXT_PARENT_DIR = Path(__file__).resolve().parent 
+_EXT_PARENT_DIR = Path(__file__).resolve().parent.parent 
 _ENGINEERING_MODEL_PATH = _EXT_PARENT_DIR.joinpath('engineering_models/.model')
 _RX_INF_PATH = _EXT_PARENT_DIR.joinpath('recrystallization/.inference')
 
