@@ -143,6 +143,16 @@ def tbar(a2: float,B2: float,T1: float,T2: float):
     
     return quad(_integrate_func, T1, T2)[0]*math.exp(a2)/(T2 - T1)
 
+def corr_zeta_jmak(a1: float, B1: float, a2: float, B2: float, n: float, T1: float, T2: float):
+
+    """
+    Numerically compute the correlation factor for the JMAK model
+    """
+    def _integrate_func(x: np.ndarray):
+        return np.exp(-B1/x) * np.exp(B2/x)
+    
+    return quad(_integrate_func, T1, T2)[0] * gamma(1 + 1/n)*math.exp(a2)/((T2 - T1)*math.exp(a1))  
+
 def _file_key(file: Any):
 
     """
