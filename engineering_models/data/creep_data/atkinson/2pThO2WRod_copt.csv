@@ -1,0 +1,7 @@
+Test Temperature (F),Specimen,Stress (psi),Rupture Time (hrs)
+2700,Y8,20000,3.2
+2700,Y7,15000,58
+2700,Z8,12500,71
+3000,3D,15000,2
+3000,4D,12500,3.3
+3000,5D,10000,4.9
