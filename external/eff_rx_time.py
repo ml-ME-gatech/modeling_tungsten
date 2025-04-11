@@ -291,7 +291,7 @@ def even_cycle_deviation(k: int, tau_inc: float, tau_rx: float, p: JMAKParams) -
     """
     N_d_inc = k
     N_d_rx = p.N_d - k
-    return abs((N_d_rx * tau_inc - p.alpha * N_d_inc * tau_rx) / (N_d_inc * tau_inc))
+    return abs((N_d_rx * tau_inc - p.alpha * N_d_inc * tau_rx) / (max(1,N_d_inc) * max(1,tau_inc)))
 
 
 
