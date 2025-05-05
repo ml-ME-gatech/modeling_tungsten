@@ -220,8 +220,8 @@ def uniform_prior_lm(name: str,
         y = jnp.sum(x_ * p,axis = -1)
         return y
 
-    a = params[0] - 3.0*jnp.sqrt(params[1])
-    b = params[0] + 3.0*jnp.sqrt(params[1])
+    a = params[0] - 5.0*jnp.sqrt(params[1])
+    b = params[0] + 5.0*jnp.sqrt(params[1])
     return [name,Uniform(a,b),linear_latent_model,None]
 
 def statsmodels_lm_to_bayesian(name: str,
@@ -731,8 +731,6 @@ class RxKineticNumpyro:
 
         Returns an array of shape (n_draws, len(t)).
         """
-        if std is None:
-            std = jnp.zeros_like(t)
         
         predictions = self.predictive(rng_key, t=t, T=T, std=std)
         return numpyro.diagnostics.hpdi(predictions, alpha)

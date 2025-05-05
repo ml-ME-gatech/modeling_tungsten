@@ -1,0 +1,6 @@
+,bayes_r2,coverage_probability,crps,sigma
+Lopez et al. (2015) - HR,0.948,0.951,0.037,0.055
+Lopez et al. (2015) - MR,0.609,0.914,0.104,0.176
+Richou et al. (2020) - Batch A,0.845,0.95,0.066,0.108
+Richou et al. (2020) - Batch B,0.739,1.0,0.08,0.156
+Yu et al. (2017),0.872,0.969,0.053,0.107
