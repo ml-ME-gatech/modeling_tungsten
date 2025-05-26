@@ -20,8 +20,11 @@ from scipy.optimize import minimize_scalar
 from statsmodels.regression.linear_model import OLS,OLSResults
 from dataclasses import dataclass
 import sys
-
+from scipy.interpolate import interp1d
+from scipy.optimize import bisect
+import math
 import sys
+from statsmodels.tools.tools import add_constant
 if 'win' in sys.platform.lower():
     from pathlib import WindowsPath as Path
 else:
@@ -680,3 +683,151 @@ def markdown_table_from_df(df: pd.DataFrame,
         table_str = table_str.replace('nan',replace_nan)
 
     return title_caption + table_str + '\n'
+
+def bf_minimize_scalar(func: callable,bounds: Tuple[float,float],interval: int = 10,**kwargs) -> float:
+    
+    """
+    Brute force minimize scalar function by dividing the interval into smaller intervals and using scipy's minimize_scalar
+    """
+    intervals = np.linspace(bounds[0],bounds[1],interval + 1)
+    f = np.ones(interval)*np.inf
+    x = np.zeros(interval)
+    for i in range(interval):
+        try:
+            res = minimize_scalar(func,bounds = (intervals[i],intervals[i+1]),**kwargs)
+            x[i]  = res.x
+            f[i] = res.fun
+        except ValueError:
+            pass
+    
+    return x[np.argmin(f)]
+
+def bf_bisect(func: callable,bounds: Tuple[float,float],interval: int = 50,**kwargs) -> float:
+    """"
+    Brute force bisection method by dividing the interval into smaller intervals and using scipy's bisect
+    """
+    intervals = np.linspace(bounds[0],bounds[1],interval + 1)
+    f = np.ones(interval)*np.inf
+    x = np.zeros(interval)
+    for i in range(interval):
+        try:
+            xx = bisect(func,intervals[i],intervals[i+1],**kwargs)
+            x[i]  = xx
+            f[i] = func(xx)
+        except ValueError:
+            pass
+    
+    return x[np.argmin(f)]
+
+def estimate_eu(df: pd.DataFrame,**interp_kwargs) -> Tuple[float,float]:
+    """
+    Estimate the uniform elongation and corresponding ultimate tensile stress of the material
+    """
+    func = interp1d(df.index,df.to_numpy().squeeze(),**interp_kwargs)
+    def _opt_func(x):
+        return -func(x)
+
+    eps_u = bf_minimize_scalar(_opt_func,bounds = (df.index.min(),df.index.max()),method = 'bounded')
+    Su = func(eps_u)
+    return eps_u,Su
+
+def estimate_tr(df: pd.DataFrame,dec_frac = 0.25,**interp_kwargs) -> Tuple[float,float]:
+    """
+    Estimate the total elongation and corresponding stress at failure of the material
+    """
+    func = interp1d(df.index,df.to_numpy().squeeze(),**interp_kwargs)
+    def _opt_func(x):
+        return -func(x)
+    
+    eu = bf_minimize_scalar(_opt_func,bounds = (df.index.min(),df.index.max()),method = 'bounded')
+    Su = func(eu)
+    
+    if df.iloc[-1].squeeze() > Su*(1-dec_frac):
+        eps_tr = df.index[-1]
+
+    else:
+        eps_tr = bf_bisect(lambda x: func(x) - Su*(1.-dec_frac),(eu,df.index[-1]))
+
+    return eps_tr,func(eps_tr)
+
+def moving_average(data: np.ndarray,window: int) -> np.ndarray:
+    return np.convolve(data,np.ones(window)/window,mode = 'same')
+
+def estimate_ym(data: pd.DataFrame,smooth: int = 6,E_frac = 0.5,
+                    return_end_point: bool = False,
+                         **interp_kwargs) -> Tuple[float,float]:
+
+    """
+    estimate the young's modulus of the material - this is not a very general function,
+    would require adapation/modification for different data.
+    """
+    smooth = int(math.ceil(smooth/2)*2)
+    signal = moving_average(data.to_numpy().squeeze(),smooth)[::smooth//2]
+    xx = data.index.to_numpy()[1:][::smooth//2]
+    signal = signal[1:] if signal.shape[0] > xx.shape[0] else signal
+    deriv = np.gradient(signal,xx)
+    
+    func = interp1d(xx,deriv,**interp_kwargs)
+    E = deriv[smooth:smooth*2].mean()
+
+    def _opt_func(x):
+        return func(x) - E_frac*E
+
+    end_point = smooth*4
+    while end_point < signal.shape[0] - 1 and deriv[end_point] > 0.0:
+        end_point += 1
+     
+    
+    end_point*= smooth//2
+    yield_point = bf_bisect(_opt_func,bounds = (data.index[smooth*4],data.index[end_point]))
+    
+    _data = data.loc[data.index < yield_point*0.9]    
+    _data = _data.iloc[smooth*2::]
+
+    E = np.mean(_data.to_numpy()/_data.index.to_numpy())
+    return E if not return_end_point else (E,end_point)
+
+def estimate_yield_point(data: pd.DataFrame,smooth: int = 6,**interp_kwargs) -> Tuple[float,float]:
+    """"
+    Estimate the yield point of the material.
+    """
+    E,ei = estimate_ym(data,smooth = smooth,return_end_point = True,**interp_kwargs)
+    sigma_02_offset = lambda eps: E*(eps -0.2*1e-2)
+    signal = moving_average(data.to_numpy().squeeze(),smooth)[::smooth//2]
+    xx = data.index.to_numpy()[1:][::smooth//2]
+    signal = signal[1:] if signal.shape[0] > xx.shape[0] else signal
+    func = interp1d(xx,signal,**interp_kwargs)
+
+    def _intersection_func(eps: float ) -> float:
+        return func(eps) - sigma_02_offset(eps)
+    
+    eps_yield = bf_bisect(_intersection_func,bounds = (0.0,data.index[ei]))
+
+    return eps_yield,func(eps_yield)
+
+
+def estimate_power_law(data_: pd.Series,
+                       smooth: int = 6,
+                       tol: float = 1e-3,
+                       E_frac: float = 0.5,
+                       **interp_kwargs) -> OLSResults:   
+    
+    eu,Su = estimate_eu(data_,**interp_kwargs)
+    E  = estimate_ym(data_,smooth = smooth,E_frac= E_frac,**interp_kwargs)
+    print(E)
+    data = data_.copy()
+    sigma_true = data.values * (1.0 + data.index.to_numpy())
+    eps_true = np.log1p(data.index)
+
+    eps_pl   = eps_true - sigma_true/E                             # ε_p = ε_true − σ_true/E
+    print(eps_pl.max())
+    mask     = (eps_pl > tol) & (data.index.to_numpy() < eu - tol)
+
+    x = add_constant(np.log(eps_pl[mask]))   
+    y = np.log(sigma_true[mask])
+    ols_results = OLS(y,x).fit()
+    return ols_results
+
+
+
+    

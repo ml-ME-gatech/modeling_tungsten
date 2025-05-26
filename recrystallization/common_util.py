@@ -302,7 +302,6 @@ def jmak_function(t: np.ndarray,b: float,t_inc: float,n: float):
     JMAK model, at a specified temperature T which the
     parameters B and M have already been evaluated at.
     """
-    1.0 - np.exp(-b**n*(t - t_inc)**n)
     yhat = np.empty_like(t)
     index = t >= t_inc
     yhat[~index] = 0.
