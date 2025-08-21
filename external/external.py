@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Callable, Any, List, Tuple
 import pickle
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -15,12 +15,19 @@ else:
 from recrystallization.common_util import LogLinearArrheniusModelFunc,LogLinearArrhenius,jmak_function,get_model_params
 from recrystallization import common_util as rx_common_util
 from engineering_models import common_util as em_common_util
+sys.modules['common_util'] = em_common_util 
+from engineering_models.modeling.creeplib import LarsonMillerPowerLaw,LarsonMillerPowerLawMulti
+from engineering_models.modeling import creeplib
+sys.modules['creeplib'] = creeplib
+sys.modules['common_util'] = rx_common_util
+
 from abc import ABC,abstractmethod
 import pandas as pd
-from scipy.integrate import quad
+from scipy.integrate import quad,cumulative_trapezoid
 from scipy.optimize import bisect
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+from collections import deque
 
 _EXT_PARENT_DIR = Path(__file__).resolve().parent.parent 
 _ENGINEERING_MODEL_PATH = _EXT_PARENT_DIR.joinpath('engineering_models/.model')
@@ -125,49 +132,112 @@ class NonisothermalJMAK:
 
     def nonisothermal_rx_fraction(self,t: np.ndarray,
                                        T: Callable,
+                                       Xinit: float = 0.0,
                                        **solver_kwargs) -> np.ndarray:
 
         def b(Temp: float): 
             return math.exp(self.a1 + self.B1/Temp)
         
-        start_t = self.effective_incubation_time(t[0],t[-1],T)
+        if Xinit == 0.0:
+            start_t = self.effective_incubation_time(t[0],t[-1],T)
+        else:
+            if Xinit >= 1 - 1e-7:
+                return np.ones_like(t)
+            
+            start_t = 0.0
 
         def integrand(tt: float, _ ):
             TT = T(tt + start_t)
             BB = b(TT)
             return BB
         
+
         Y = np.zeros_like(t)
-        index = t >start_t
+        Y[~np.isfinite(t)] = 1.0
+        index = np.logical_and(t >=start_t,np.isfinite(t))
         solver_kwargs = _default_ode_kwargs(**solver_kwargs)
-        Z = solve_ivp(integrand,(t[0],t[-1]),np.array([1e-18]),
+        Zinit = - math.log(1.0- Xinit)
+        Z = solve_ivp(integrand,(t[0],t[index].max()),np.array([Zinit if Xinit > 0.0 else 1e-18]),
                             t_eval = (t[index] - start_t),**solver_kwargs)['y'].squeeze()**self.n  
 
         Y[index] = 1. - np.exp(-Z)
         return Y
     
-    def isothermal_rx_fraction(self, t: np.ndarray | float, T: float | np.ndarray) -> np.ndarray:
+    def isothermal_rx_fraction(self, t: np.ndarray | float, 
+                                     T: float | np.ndarray,
+                                     Xinit: float = 0.0) -> np.ndarray:
         
         t_,T_ = _reconcile_rx_model_shape(t,T)
-        return self.model.predict(np.array([t_,T_]).T).squeeze()
+        tinit = self.get_rx_time(Xinit,T_[0]) if Xinit > 0.0 else 0.0
+        sim_t = t_ + tinit   
+        X = np.ones_like(sim_t)
+        index = np.isfinite(sim_t)
+        X[index] = self.model.predict(np.array([sim_t[index],T_[index]]).T).squeeze()
+        return X
     
     def __call__(self, t: np.ndarray | float,
                        T: Callable | float,
+                       Xinit: float = 0.0,
                        **solver_kwargs) -> Callable:
         
         if callable(T) :
             assert(isinstance(t,np.ndarray)), "Time must be an array if temperature is a function"
-            return self.nonisothermal_rx_fraction(t,T, **solver_kwargs)
+            return self.nonisothermal_rx_fraction(t,T,Xinit = Xinit, **solver_kwargs)
         elif isinstance(T,float):
-            return self.isothermal_rx_fraction(t,T)
+            return self.isothermal_rx_fraction(t,T,Xinit = Xinit)
         elif isinstance(T,np.ndarray):
             if isinstance(t,np.ndarray):
                 assert t.shape == T.shape, f"Invalid shape: {t.shape} must be same as {T.shape}"
             
-            return self.isothermal_rx_fraction(t,T)
+            return self.isothermal_rx_fraction(t,T,Xinit = Xinit)
         else:
             raise TypeError('Unsupported type for T')
+        
+    def simulate(self,t: np.ndarray,
+                      T: np.ndarray) -> np.ndarray:
+        """
+        Simulate the recrystallization fraction for a given time and temperature.
 
+        Parameters
+        ----------
+        t : List[np.ndarray | float]
+            Time
+        T : Callable | float
+            Temperature
+        **solver_kwargs : dict
+            Keyword arguments to pass to the solver
+        """
+        #incubation period
+        
+        #numerically integrate incubation period.
+        y = np.exp(-(self.a2 + self.B2 / T))             # integrand
+        rho = cumulative_trapezoid(y, t, initial=0.0)
+        X = np.zeros_like(t)
+        index = rho > 1.0
+        if np.all(~index):
+            return np.zeros_like(t)
+        
+        Z = (cumulative_trapezoid(np.exp(self.a1 + self.B1/T[index]),
+                               x = t[index] - t[index][0],initial = 0.))**self.n
+        X[index] = 1. - np.exp(-Z)
+        X[X > 1.0] = 1.0
+        return X
+
+
+    @classmethod
+    def read_jmak_model_inference(cls,file: str | PurePath,
+                                  estimate = 'ml') -> 'NonisothermalJMAK':
+        """
+        Helper function to read a callable JMAK model from an inference file containing parameters.
+
+        Parameters
+        ----------
+        file : str | PurePath
+            Path to the inference file, should probably reside in the .inference directory in recrystallization subfolder
+        estimate : str
+            Estimate to use for the parameters. Default is 'ml' for maximum likelihood.
+        """
+        return read_jmak_model_inference(file,estimate = estimate)
 
 def structural_model_to_jmak_params(latent_param: np.ndarray,
                                     latent_var: np.ndarray): 
@@ -250,11 +320,16 @@ def _call_or_predict(model: Callable | Pipeline | BaseEstimator,
     if callable(model):
         return model(*args, **kwargs)
     elif is_sklearn(model):
-        args = list(args)
-        X = _coerce_sklearn_2d_shape(args.pop(0))
+        args = deque(args)
+        X = _coerce_sklearn_2d_shape(args.popleft())
         return model.predict(X,*args, **kwargs)
+    elif isinstance(model,LarsonMillerPowerLaw):
+        return model.get_prediction(*args, **kwargs)
+    elif isinstance(model,LarsonMillerPowerLawMulti):
+        return model.get_prediction_aggregate(*args,**kwargs)
     else:
         raise ValueError(f"Invalid model type: {type(model)} must be callable or sklearn model")
+    
 
 class LoadableMaterialProperty:
 
@@ -275,32 +350,65 @@ class LoadableMaterialProperty:
 
     def __init__(self,file: str = None,
                       material_property: Callable = None,
-                      module: Any = em_common_util):    
+                      module: Any = em_common_util,
+                      ftype = 'pickle'):    
         
         self.file = file
         self.material_property = material_property
         self.module = module
-    
-    def load(self):
+        self._ftype = ftype
+        try:
+            self._ccu = sys.modules['common_util']
+        except KeyError:
+            self._ccu = None
+
+    def _load(self,load_fn: Callable):
         if self.file:
             with open(self.file,'rb') as f:
-                try:
-                    old_module = sys.modules['common_util']
-                except KeyError:
-                    old_module = None
-
                 sys.modules['common_util'] = self.module 
-                self.material_property = pickle.load(f)
-                sys.modules['common_util'] = old_module
+                self.material_property = load_fn(f)
+                sys.modules['common_util'] = self._ccu
+        else:
+            raise ValueError("No file specified")
+
+    def load_pickle(self):
+        self._load(pickle.load)
+    
+    def load_dill(self):
+        self._load(pickle.load)     
+
+    def load(self): 
+        try:
+            self.load_pickle()
+            self._ftype = 'pickle'
+        except Exception as e1:
+            try:
+                self.load_dill()
+                self._ftype = 'dill'
+            except Exception as e2:
+                combined_error = 'Pickle Error:'  + str(e1) + '\n' + 'Dill Error:' + str(e2) + '\n'
+                raise ValueError(f"Failed to load material property from {self.file}\n{combined_error}")
+    
+    def _save(self,dump_fn: Callable):
+        if self.file:
+            with open(self.file,'wb') as f:
+                dump_fn(self.material_property,f)
         else:
             raise ValueError("No file specified")
     
-    def save(self):
-        if self.file:
-            with open(self.file,'wb') as f:
-                pickle.dump(self.material_property,f)
+    def save_pickle(self):
+        self._save(pickle.dump)
+    
+    def save_dill(self):
+        self._save(pickle.dump)
+
+    def save(self): 
+        if self._ftype == 'pickle':
+            self.save_pickle()
+        elif self._ftype == 'dill':
+            self.save_dill()
         else:
-            raise ValueError("No file specified")
+            raise ValueError(f"Unsupported file type: {self._ftype} must be either pickle or dill")
     
     def __call__(self,*args, **kwargs):
         if self.material_property:
@@ -377,7 +485,11 @@ class RecrystallizedUltimateTensileStress(RecrystallizedModel):
     def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
         if isinstance(time, np.ndarray):
             assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
-        
+            
+        if isinstance(time,float):
+            if time == 0: 
+                return self.ultimate_tensile_stress(temperature)
+            
         return self.ultimate_tensile_stress(temperature) - \
                 self.recrystallization_fraction(time,temperature + 273.15) * self.delta_uts
 
@@ -414,6 +526,10 @@ class RecrystallizedTotalElongation(RecrystallizedModel):
     def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:  
         if isinstance(time, np.ndarray):
             assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
+        
+        if isinstance(time,float):
+            if time == 0: 
+                return self.total_elongation(temperature)
         
         return self.total_elongation(temperature) - \
                 self.recrystallization_fraction(time,temperature + 273.15) * self.delta_te
@@ -455,13 +571,20 @@ class RecrystallizedUniformElongation(RecrystallizedModel):
                                                                              module = rx_common_util)
         self.delta_te    = delta_te
     
+    def delta_ue(self,temperature: np.ndarray) -> np.ndarray:
+        return self.delta_te * self.uniform_elongation(temperature) / self.total_elongation(temperature)
+    
     def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
         if isinstance(time, np.ndarray):
             assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
         
-        delta_ue = self.delta_te * self.uniform_elongation(temperature) / self.total_elongation(temperature)
-        return self.uniform_elongation(temperature) - \
-                self.recrystallization_fraction(time,temperature + 273.15) * delta_ue
+        if isinstance(time,float):
+            if time == 0: 
+                return self.uniform_elongation(temperature)
+        else:
+            delta_ue = self.delta_ue(temperature)
+            return self.uniform_elongation(temperature) - \
+                    self.recrystallization_fraction(time,temperature + 273.15) * delta_ue
 
 @dataclass  
 class ElasticMaterialModel:
@@ -493,11 +616,12 @@ class ElasticMaterialModel:
     youngs_modulus: str | Callable = None   
     conductivity: str | Callable = None
     coefficient_of_thermal_expansion: str | Callable = None
+    creep_stress: str | Callable = None
 
     def __post_init__(self):
         items = ['ultimate_tensile_stress','uniform_elongation',
                  'total_elongation','youngs_modulus',
-                 'conductivity','coefficient_of_thermal_expansion']
+                 'conductivity','coefficient_of_thermal_expansion','creep_stress']
         for item in items:
             atrr_ = getattr(self,item)
             if isinstance(atrr_,LoadableMaterialProperty):
@@ -509,7 +633,30 @@ class ElasticMaterialModel:
             elif atrr_ is not None:
                 raise TypeError(f"Invalid type for {item}: must be str or Callable")
 
-def get_nogami_material_property(material: str):
+    def add(self,
+             other: 'ElasticMaterialModel',
+             prefer = 'self') -> 'ElasticMaterialModel':
+        """
+        Join two ElasticMaterialModels together. This is useful for combining multiple models together
+        into a single model. 
+
+        Parameters
+        ----------
+        other : ElasticMaterialModel
+            Other ElasticMaterialModel to join with
+        """
+        items = ['ultimate_tensile_stress','uniform_elongation',
+                 'total_elongation','youngs_modulus',
+                 'conductivity','coefficient_of_thermal_expansion','creep_stress']
+        for item in items:
+            if getattr(self,item) is None:
+                setattr(self,item,getattr(other,item))
+            elif getattr(self,item) is not None and getattr(other,item) is not None and prefer == 'other':
+                setattr(self,item,getattr(other,item))
+
+        
+
+def get_nogami_material_property(material: str) -> ElasticMaterialModel:
 
     """
     Function to get the material property from the Nogami database. For nogami's data specifically, multiple 
@@ -533,6 +680,10 @@ def get_nogami_material_property(material: str):
                                conductivity = _ENGINEERING_MODEL_PATH.joinpath(f'{_material}_k.pkl'))
     
     return emm
+
+def get_lmpl_creep_model(material: str) -> ElasticMaterialModel:
+    
+    return ElasticMaterialModel(creep_stress= _ENGINEERING_MODEL_PATH / (material + '.pkl'))
 
 def get_nogami_material_recrystallization_property(material: str,
                                                    rx_material: str,
