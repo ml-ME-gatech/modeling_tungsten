@@ -1,4 +1,4 @@
-from typing import Callable, Any, List, Tuple
+from typing import Callable, Any, List, Tuple, Dict
 import pickle
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -331,6 +331,9 @@ def _call_or_predict(model: Callable | Pipeline | BaseEstimator,
         raise ValueError(f"Invalid model type: {type(model)} must be callable or sklearn model")
     
 
+    
+    
+        
 class LoadableMaterialProperty:
 
     """
@@ -351,16 +354,21 @@ class LoadableMaterialProperty:
     def __init__(self,file: str = None,
                       material_property: Callable = None,
                       module: Any = em_common_util,
-                      ftype = 'pickle'):    
+                      ftype = 'pickle',
+                      enforce_positive: bool = False):    
         
+
         self.file = file
         self.material_property = material_property
+
         self.module = module
         self._ftype = ftype
         try:
             self._ccu = sys.modules['common_util']
         except KeyError:
             self._ccu = None
+
+        self.enforce_positive = enforce_positive
 
     def _load(self,load_fn: Callable):
         if self.file:
@@ -388,6 +396,7 @@ class LoadableMaterialProperty:
             except Exception as e2:
                 combined_error = 'Pickle Error:'  + str(e1) + '\n' + 'Dill Error:' + str(e2) + '\n'
                 raise ValueError(f"Failed to load material property from {self.file}\n{combined_error}")
+        
     
     def _save(self,dump_fn: Callable):
         if self.file:
@@ -412,16 +421,24 @@ class LoadableMaterialProperty:
     
     def __call__(self,*args, **kwargs):
         if self.material_property:
-            return _call_or_predict(self.material_property,*args, **kwargs)
+            v = _call_or_predict(self.material_property,*args, **kwargs)
         else:
             self.load()
             if not self.material_property:
                 raise ValueError("No material property specified")
-            return _call_or_predict(self.material_property,*args, **kwargs)
+            v = _call_or_predict(self.material_property,*args, **kwargs)
+
+        if self.enforce_positive and isinstance(v, np.ndarray):
+            return np.clip(v, 0, None)
+        elif self.enforce_positive and isinstance(v, (int, float)):
+            return max(v, 0)
+        else:
+            return v
     
     @classmethod
     def from_item(cls,item: str | PurePath | Callable,
-                        module = em_common_util) -> 'LoadableMaterialProperty':
+                        module = em_common_util,
+                        **kwargs) -> 'LoadableMaterialProperty':
         """
         Convinience method for creating a LoadableMaterialProperty from a farily generic item
         Parameters
@@ -433,23 +450,125 @@ class LoadableMaterialProperty:
         """
 
         if isinstance(item,str) or isinstance(item,PurePath):
-            return cls(file = item,module = module)
+            return cls(file = item,module = module,**kwargs)
         elif isinstance(item,LoadableMaterialProperty):
             return item
         elif callable(item):
-            return cls(material_property = item,module = module)
+            return cls(material_property = item,module = module,**kwargs)
         elif item is not None:
             raise TypeError(f"Invalid type for {item}: must be str or Callable")
 
+
+class ClippedTemperatureMaterialProperty(LoadableMaterialProperty):
+
+    def __init__(self,*args,
+                      min_temp: float = -np.inf,
+                      max_temp: float = np.inf,
+                      **kwargs):
+
+        super().__init__(*args, **kwargs)
+        self.min_temp = min_temp
+        self.max_temp = max_temp
+
+    def __call__(self, temperature: np.ndarray, *args,**kwargs):
+        """
+        Call the material property with clipped temperature values.
+        
+        Parameters
+        ----------
+        temperature : np.ndarray
+            Temperature values to clip and pass to the material property
+        **kwargs : dict
+            Additional keyword arguments to pass to the material property
+        """
+        if len(args) == 1:
+            t,temperature = temperature,args[0]
+        else:
+            t = None
+        
+        clipped_temp = np.clip(temperature, self.min_temp, self.max_temp)
+        return super().__call__(clipped_temp, **kwargs) if t is None else super().__call__(t,clipped_temp, **kwargs)
+
 class RecrystallizedModel(ABC):
 
-    def _parse_material_property_item(self,item : LoadableMaterialProperty | str | Callable,
-                                           module = em_common_util) -> LoadableMaterialProperty:
-        return LoadableMaterialProperty.from_item(item,module = module) 
+    def __init__(self,annealed: bool = False,
+                      enforce_positive: bool = False):
+        
+        self.annealed = annealed
+        self._recrystallization_fraction = None
+        self.enforce_positive = enforce_positive
+    
+    def _parse_material_property_item(self,item : LoadableMaterialProperty | ClippedTemperatureMaterialProperty | str | Callable,
+                                           module = em_common_util,
+                                           clip_temp: bool = True,
+                                           enforce_positive: bool = False,
+                                           **kwargs) -> ClippedTemperatureMaterialProperty | LoadableMaterialProperty:
+        
+        if clip_temp:
+            return ClippedTemperatureMaterialProperty.from_item(item,module = module,
+                                                                enforce_positive = enforce_positive,
+                                                                **kwargs) 
+        else:
+            return LoadableMaterialProperty.from_item(item,module = module,
+                                                      enforce_positive = enforce_positive,
+                                                      **kwargs)
+
+    def recrystallization_fraction(self,
+                                   time: np.ndarray | float,
+                                   temperature: np.ndarray | float,
+                                   **kwargs) -> np.ndarray:
+        """
+        Get the recrystallization fraction for a given time and temperature.
+
+        Parameters
+        ----------
+        time : np.ndarray | float
+            Time
+        temperature : np.ndarray | float
+            Temperature
+        **kwargs : dict
+            Additional keyword arguments to pass to the recrystallization model
+        """
+        if self._recrystallization_fraction is None:
+            raise ValueError("Recrystallization fraction model not set. Please set it before calling this method.")
+        
+        X = self._recrystallization_fraction(time,temperature + 273.15,**kwargs)
+        if self.annealed:
+            return np.ones_like(X)
+        
+        return X
+    
+    @abstractmethod
+    def material_property(self,temperature: np.ndarray) -> np.ndarray:
+        pass
+
 
     @abstractmethod
-    def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
+    def delta_property(self,temperature: np.ndarray) -> np.ndarray:
         pass
+
+    def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
+        """
+        Call the recrystallized model with time and temperature.
+
+        Parameters
+        ----------
+        time : np.ndarray | float
+            Time
+        temperature : np.ndarray
+            Temperature
+        """
+        if isinstance(time, np.ndarray):
+            assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
+        
+        v = self.material_property(temperature) - \
+                self.recrystallization_fraction(time,temperature) * self.delta_property(temperature)
+        if self.enforce_positive:
+            return np.clip(v, 0., None)
+        else:
+            return v
+        
+
 
 class RecrystallizedUltimateTensileStress(RecrystallizedModel):
 
@@ -472,27 +591,31 @@ class RecrystallizedUltimateTensileStress(RecrystallizedModel):
         Difference between the ultimate tensile stress and the recrystallized ultimate tensile stress
     """
 
-    def __init__(self,ultimate_tensile_stress: LoadableMaterialProperty | str | Callable,
-                      recrystallization_fraction: LoadableMaterialProperty | str | Callable,
-                      delta_uts: float):
-        
+    def __init__(self,ultimate_tensile_stress: LoadableMaterialProperty | ClippedTemperatureMaterialProperty |  str | Callable,
+                      recrystallization_fraction: LoadableMaterialProperty | ClippedTemperatureMaterialProperty | str | Callable,
+                      delta_uts: float,
+                      annealed: bool = False,
+                      enforce_positive: bool = False,
+                      **kwargs):
+
+        super().__init__(annealed = annealed,enforce_positive= enforce_positive)
+
         self.ultimate_tensile_stress = self._parse_material_property_item(ultimate_tensile_stress,
-                                                                          module = em_common_util)
-        self.recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
-                                                                             module = rx_common_util)
+                                                                          module = em_common_util,
+                                                                          enforce_positive= enforce_positive,
+                                                                          **kwargs)
+        self._recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
+                                                                             module = rx_common_util,
+                                                                             clip_temp = False)
         self.delta_uts    = delta_uts
 
-    def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
-        if isinstance(time, np.ndarray):
-            assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
-            
-        if isinstance(time,float):
-            if time == 0: 
-                return self.ultimate_tensile_stress(temperature)
-            
-        return self.ultimate_tensile_stress(temperature) - \
-                self.recrystallization_fraction(time,temperature + 273.15) * self.delta_uts
-
+    
+    def material_property(self,temperature: np.ndarray) -> np.ndarray:
+        return self.ultimate_tensile_stress(temperature)
+    
+    def delta_property(self, temperature: np.ndarray) -> np.ndarray:
+        return self.delta_uts*np.ones_like(temperature)
+    
 class RecrystallizedTotalElongation(RecrystallizedModel):
     r"""
     Class for recrystallized total elongation
@@ -515,24 +638,28 @@ class RecrystallizedTotalElongation(RecrystallizedModel):
 
     def __init__(self,total_elongation: LoadableMaterialProperty | str | Callable,
                       recrystallization_fraction: LoadableMaterialProperty | str | Callable,
-                      delta_te: float):
+                      delta_te: float,
+                      annealed: bool = False,
+                      enforce_positive: bool = False,
+                      **kwargs):
         
+        super().__init__(annealed = annealed,enforce_positive= enforce_positive)
         self.total_elongation = self._parse_material_property_item(total_elongation,
-                                                                    module = em_common_util)
-        self.recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
-                                                                             module = rx_common_util)    
+                                                                    module = em_common_util,
+                                                                    enforce_positive = enforce_positive,
+                                                                    **kwargs)
+        self._recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
+                                                                             module = rx_common_util,
+                                                                             clip_temp = False)    
         self.delta_te    = delta_te
     
-    def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:  
-        if isinstance(time, np.ndarray):
-            assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
-        
-        if isinstance(time,float):
-            if time == 0: 
-                return self.total_elongation(temperature)
-        
-        return self.total_elongation(temperature) - \
-                self.recrystallization_fraction(time,temperature + 273.15) * self.delta_te
+    
+    def material_property(self,temperature: np.ndarray) -> np.ndarray:
+        return self.total_elongation(temperature)
+
+    def delta_property(self, temperature: np.ndarray) -> np.ndarray:
+        return self.delta_te*np.ones_like(temperature)
+    
     
 class RecrystallizedUniformElongation(RecrystallizedModel):
 
@@ -561,30 +688,29 @@ class RecrystallizedUniformElongation(RecrystallizedModel):
     def __init__(self,uniform_elongation: LoadableMaterialProperty | str | Callable,
                       total_elongation: LoadableMaterialProperty | str | Callable,
                       recrystallization_fraction: LoadableMaterialProperty | str | Callable,
-                      delta_te: float):
+                      delta_te: float,
+                      annealed: bool = False,
+                    enforce_positive: bool = False,
+                      **kwargs):
         
+        super().__init__(annealed = annealed, enforce_positive= enforce_positive)
         self.uniform_elongation = self._parse_material_property_item(uniform_elongation,
-                                                                    module = em_common_util)
+                                                                    module = em_common_util,
+                                                                    enforce_positive= enforce_positive,
+                                                                    **kwargs)
         self.total_elongation = self._parse_material_property_item(total_elongation,
-                                                                    module = em_common_util)
-        self.recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
-                                                                             module = rx_common_util)
+                                                                    module = em_common_util,
+                                                                    enforce_positive= enforce_positive,
+                                                                    **kwargs)
+        self._recrystallization_fraction = self._parse_material_property_item(recrystallization_fraction,
+                                                                             module = rx_common_util,clip_temp= False)
         self.delta_te    = delta_te
     
-    def delta_ue(self,temperature: np.ndarray) -> np.ndarray:
+    def delta_property(self,temperature: np.ndarray) -> np.ndarray:
         return self.delta_te * self.uniform_elongation(temperature) / self.total_elongation(temperature)
     
-    def __call__(self,time: np.ndarray | float,temperature: np.ndarray) -> np.ndarray:
-        if isinstance(time, np.ndarray):
-            assert time.shape == temperature.shape, f"Invalid shape: {time.shape} must be same as {temperature.shape}"
-        
-        if isinstance(time,float):
-            if time == 0: 
-                return self.uniform_elongation(temperature)
-        else:
-            delta_ue = self.delta_ue(temperature)
-            return self.uniform_elongation(temperature) - \
-                    self.recrystallization_fraction(time,temperature + 273.15) * delta_ue
+    def material_property(self,temperature: np.ndarray) -> np.ndarray:
+        return self.uniform_elongation(temperature)
 
 @dataclass  
 class ElasticMaterialModel:
@@ -617,6 +743,9 @@ class ElasticMaterialModel:
     conductivity: str | Callable = None
     coefficient_of_thermal_expansion: str | Callable = None
     creep_stress: str | Callable = None
+    min_temp: float = -np.inf
+    max_temp: float = np.inf
+    enforce_positive: bool = False
 
     def __post_init__(self):
         items = ['ultimate_tensile_stress','uniform_elongation',
@@ -624,14 +753,38 @@ class ElasticMaterialModel:
                  'conductivity','coefficient_of_thermal_expansion','creep_stress']
         for item in items:
             atrr_ = getattr(self,item)
-            if isinstance(atrr_,LoadableMaterialProperty):
+            if item == 'creep_stress':
+                if isinstance(atrr_,LoadableMaterialProperty):
+                    atrr_.enforce_positive = self.enforce_positive
+                elif isinstance(atrr_,str) or isinstance(atrr_,PurePath):
+                    setattr(self,item,
+                            LoadableMaterialProperty(file = atrr_,
+                                                     module = creeplib,
+                                                     enforce_positive = self.enforce_positive))
+                elif callable(atrr_):
+                    setattr(self,item,
+                            LoadableMaterialProperty(material_property = atrr_,
+                                                     module = creeplib,
+                                                     enforce_positive = self.enforce_positive))
+            if isinstance(atrr_,ClippedTemperatureMaterialProperty):
+                atrr_.min_temp = self.min_temp
+                atrr_.max_temp = self.max_temp
+                atrr_.enforce_positive = self.enforce_positive
+            elif isinstance(atrr_, RecrystallizedModel):
                 pass
             elif isinstance(atrr_,str) or isinstance(atrr_,PurePath):
-                setattr(self,item,LoadableMaterialProperty(file = atrr_))
+                setattr(self,item,
+                        ClippedTemperatureMaterialProperty(file = atrr_,
+                                                           min_temp = self.min_temp,
+                                                           max_temp = self.max_temp,
+                                                           enforce_positive = self.enforce_positive))
             elif callable(atrr_):
-                setattr(self,item,LoadableMaterialProperty(material_property = atrr_))
+                setattr(self,item,ClippedTemperatureMaterialProperty(material_property = atrr_,
+                                                                     min_temp = self.min_temp,
+                                                                     max_temp = self.max_temp,
+                                                                     enforce_positive = self.enforce_positive))
             elif atrr_ is not None:
-                raise TypeError(f"Invalid type for {item}: must be str or Callable")
+                raise TypeError(f"Invalid type for {item}: must be str, Callable,LoadableMaterialProperty, or ClippedTemperatureMaterialProperty, got {type(atrr_)}")
 
     def add(self,
              other: 'ElasticMaterialModel',
@@ -656,7 +809,12 @@ class ElasticMaterialModel:
 
         
 
-def get_nogami_material_property(material: str) -> ElasticMaterialModel:
+def get_nogami_material_property(material: str,
+                                 tmin: float = 0,
+                                 tmax: float = 1200,
+                                 tmin_values: Dict = {},
+                                 tmax_values: Dict = {},
+                                 enforce_positive: bool = True) -> ElasticMaterialModel:
 
     """
     Function to get the material property from the Nogami database. For nogami's data specifically, multiple 
@@ -677,19 +835,39 @@ def get_nogami_material_property(material: str) -> ElasticMaterialModel:
                                uniform_elongation = _ENGINEERING_MODEL_PATH.joinpath(f'{_material}_ue.pkl'),
                                total_elongation = _ENGINEERING_MODEL_PATH.joinpath(f'{_material}_te.pkl'),
                                youngs_modulus = _EXT_PARENT_DIR.joinpath(f'_external/.model/youngs_modulus'),
-                               conductivity = _ENGINEERING_MODEL_PATH.joinpath(f'{_material}_k.pkl'))
+                               conductivity = _ENGINEERING_MODEL_PATH.joinpath(f'{_material}_k.pkl'),
+                               min_temp=  tmin,
+                               max_temp = tmax,
+                               enforce_positive = enforce_positive)
     
+    if tmin_values and tmax_values:
+        set_properties = ['ultimate_tensile_stress','uniform_elongation',
+                          'total_elongation','conductivity','youngs_modulus']
+        for prop in set_properties:
+            item = getattr(emm, prop)
+            item.min_temp = tmin_values.get(prop, tmin)
+            item.max_temp = tmax_values.get(prop, tmax)
+            setattr(emm, prop,item)
+
     return emm
 
-def get_lmpl_creep_model(material: str) -> ElasticMaterialModel:
+def get_lmpl_creep_model(material: str,
+                         enforce_positive: bool = True) -> ElasticMaterialModel:
     
-    return ElasticMaterialModel(creep_stress= _ENGINEERING_MODEL_PATH / (material + '.pkl'))
+    return ElasticMaterialModel(creep_stress= _ENGINEERING_MODEL_PATH / (material + '.pkl'),
+                                enforce_positive = enforce_positive)
 
 def get_nogami_material_recrystallization_property(material: str,
                                                    rx_material: str,
                                                    delta_uts: float,
                                                    delta_te: float,
-                                                   rx_model =None):
+                                                   rx_model =None,
+                                                   tmin: float = 0.0,
+                                                   tmax: float = 1200.0,
+                                                   tmin_values: Dict = {},
+                                                   tmax_values: Dict = {},
+                                                   annealed: bool = False,
+                                                   enforce_positive: bool = True) -> ElasticMaterialModel:
     
     """ 
     Function to get the material property from the Nogami database with an accompying recrystallization
@@ -707,28 +885,48 @@ def get_nogami_material_recrystallization_property(material: str,
         Difference between the total elongation and the recrystallized total elongation
     """
 
-    emm = get_nogami_material_property(material)
+    emm = get_nogami_material_property(material,tmin = tmin,
+                                      tmax = tmax,
+                                      tmin_values = tmin_values,
+                                      tmax_values = tmax_values,
+                                      enforce_positive = enforce_positive)
     try:
         rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'JMAK_{rx_material}_trunc_normal_params.csv')) if rx_model is None else rx_model
     except FileNotFoundError:
         rx_model = read_jmak_model_inference(_RX_INF_PATH.joinpath(f'{rx_material}_tpa_map_trunc_normal.pkl')) if rx_model is None else rx_model
     
     uts = RecrystallizedUltimateTensileStress(emm.ultimate_tensile_stress,
-                                              LoadableMaterialProperty(material_property= rx_model),
-                                              delta_uts)
+                                              ClippedTemperatureMaterialProperty(material_property= rx_model,
+                                                                                 min_temp = tmin_values.get('ultimate_tensile_stress', tmin),
+                                                                                 max_temp = tmax_values.get('ultimate_tensile_stress', tmax),
+                                                                                 enforce_positive = enforce_positive),
+                                              delta_uts,
+                                              annealed = annealed,
+                                              enforce_positive = enforce_positive)
     te = RecrystallizedTotalElongation(emm.total_elongation,
-                                        LoadableMaterialProperty(material_property= rx_model),
-                                        delta_te)
+                                        ClippedTemperatureMaterialProperty(material_property= rx_model,
+                                                                           min_temp = tmin_values.get('total_elongation', tmin),
+                                                                           max_temp = tmax_values.get('total_elongation', tmax),
+                                                                           enforce_positive = enforce_positive),
+                                        delta_te,
+                                        annealed = annealed,
+                                        enforce_positive = enforce_positive)
     ue = RecrystallizedUniformElongation(emm.uniform_elongation,
                                         emm.total_elongation,
-                                        LoadableMaterialProperty(material_property= rx_model),
-                                        delta_te)
+                                        ClippedTemperatureMaterialProperty(material_property= rx_model,
+                                                                           min_temp= tmin_values.get('uniform_elongation', tmin),
+                                                                           max_temp = tmax_values.get('uniform_elongation', tmax),
+                                                                           enforce_positive = enforce_positive),
+                                        delta_te,
+                                        annealed = annealed,
+                                        enforce_positive = enforce_positive)
     return ElasticMaterialModel(ultimate_tensile_stress = uts,
                                uniform_elongation = ue,
                                total_elongation = te,
                                youngs_modulus = emm.youngs_modulus,
                                conductivity = emm.conductivity,
-                               coefficient_of_thermal_expansion = emm.coefficient_of_thermal_expansion)
+                               coefficient_of_thermal_expansion = emm.coefficient_of_thermal_expansion,
+                               min_temp = tmin,max_temp = tmax,enforce_positive = enforce_positive)
 
 def main():
 
